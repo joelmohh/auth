@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<- includes('/partials/head', { title: 'Create Account - Joelmo Auth Systems' }) ->
+
+<body>
+    <div class="auth-container">
+        <div class="auth-logo">
+            <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M16 2L29 9V23L16 30L3 23V9L16 2Z" fill="#15616D" />
+                <path d="M11 20L16 12L21 20H11Z" fill="#FFFFFF" />
+            </svg>
+            <span>Joelmo</span>
+        </div>
+
+        <div class="auth-card">
+            <h2>Create your account</h2>
+            <p class="auth-subtitle">Start in seconds, no credit card required</p>
+
+            <div class="social-grid">
+                <button type="button" class="btn-social" title="Sign up with Google" aria-label="Sign up with Google">
+                    <svg viewBox="0 0 24 24">
+                        <path fill="#EA4335"
+                            d="M12 10.2v3.9h5.5c-.24 1.3-1.68 3.8-5.5 3.8-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.15.8 3.88 1.5l2.64-2.5C16.83 3 14.6 2 12 2 6.98 2 3 5.98 3 11s3.98 9 9 9c5.2 0 8.6-3.6 8.6-8.7 0-.6-.07-1-.15-1.4H12Z" />
+                    </svg>
+                </button>
+                <button type="button" class="btn-social" title="Sign up with Apple" aria-label="Sign up with Apple">
+                    <svg viewBox="0 0 24 24">
+                        <path fill="currentColor"
+                            d="M16.7 1c.1 1.1-.3 2.2-1 3-.7.8-1.9 1.5-3 1.4-.1-1.1.4-2.2 1-2.9.8-.9 2-1.5 3-1.5ZM20 17.2c-.5 1.1-.8 1.6-1.5 2.6-1 1.4-2.3 3.1-4 3.1-1.5 0-1.9-.9-3.8-.9-2 0-2.5.9-3.9.9-1.7 0-2.9-1.6-3.9-3-2.7-3.8-3-8.3-1.3-10.7 1.2-1.7 3-2.7 4.7-2.7 1.7 0 2.8 1 4.2 1 1.3 0 2.2-1 4.2-1 1.5 0 3.1.8 4.2 2.2-3.7 2-3.1 7.2.1 8.5Z" />
+                    </svg>
+                </button>
+                <button type="button" class="btn-social" title="Sign up with Microsoft"
+                    aria-label="Sign up with Microsoft">
+                    <svg viewBox="0 0 24 24">
+                        <rect x="2" y="2" width="9" height="9" fill="#F35325" />
+                        <rect x="13" y="2" width="9" height="9" fill="#81BC06" />
+                        <rect x="2" y="13" width="9" height="9" fill="#05A6F0" />
+                        <rect x="13" y="13" width="9" height="9" fill="#FFBA08" />
+                    </svg>
+                </button>
+                <button type="button" class="btn-social" title="Sign up with GitHub" aria-label="Sign up with GitHub">
+                    <svg viewBox="0 0 24 24">
+                        <path fill="currentColor"
+                            d="M12 2C6.48 2 2 6.58 2 12.2c0 4.5 2.87 8.3 6.84 9.65.5.1.68-.22.68-.5v-1.75c-2.78.62-3.37-1.36-3.37-1.36-.46-1.2-1.11-1.5-1.11-1.5-.9-.63.07-.62.07-.62 1 .07 1.53 1.05 1.53 1.05.9 1.55 2.34 1.1 2.91.85.09-.66.35-1.1.64-1.36-2.22-.26-4.56-1.14-4.56-5.05 0-1.12.39-2.03 1.03-2.74-.1-.26-.45-1.32.1-2.75 0 0 .84-.28 2.75 1.05a9.3 9.3 0 0 1 5 0c1.9-1.33 2.75-1.05 2.75-1.05.55 1.43.2 2.49.1 2.75.64.71 1.03 1.62 1.03 2.74 0 3.92-2.35 4.78-4.58 5.04.36.32.68.94.68 1.9v2.82c0 .28.18.6.69.5A10.03 10.03 0 0 0 22 12.2C22 6.58 17.52 2 12 2Z" />
+                    </svg>
+                </button>
+                <button type="button" class="btn-social" title="Sign up with Discord" aria-label="Sign up with Discord">
+                    <svg viewBox="0 0 24 24">
+                        <path fill="#5865F2"
+                            d="M20 5.5A17 17 0 0 0 15.9 4l-.3.6a13 13 0 0 1 3.6 1.3 15.6 15.6 0 0 0-14.4 0A13 13 0 0 1 8.4 4.6L8.1 4A17 17 0 0 0 4 5.5C1.6 9 1 12.4 1.2 15.7a17 17 0 0 0 5 2.5l.9-1.3a11 11 0 0 1-1.6-.8l.4-.3a12.3 12.3 0 0 0 10.2 0l.4.3c-.5.3-1 .6-1.6.8l.9 1.3a17 17 0 0 0 5-2.5C23 12 22 8.6 20 5.5ZM9 14.2c-.8 0-1.4-.8-1.4-1.7 0-1 .6-1.7 1.4-1.7s1.4.8 1.4 1.7c0 1-.6 1.7-1.4 1.7Zm6 0c-.8 0-1.4-.8-1.4-1.7 0-1 .6-1.7 1.4-1.7s1.4.8 1.4 1.7c0 1-.6 1.7-1.4 1.7Z" />
+                    </svg>
+                </button>
+                <button type="button" class="btn-social" title="Sign up with X" aria-label="Sign up with X">
+                    <svg viewBox="0 0 24 24">
+                        <path fill="currentColor"
+                            d="M17.5 3h3l-7 8 8 10h-6.3l-5-6.4L4 21H1l7.5-8.6L1 3h6.4l4.5 5.8L17.5 3Zm-1.1 16h1.7L7.7 5H5.9l10.5 14Z" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="auth-divider">or sign up with email</div>
+
+            <form>
+                <div class="mb-3">
+                    <label for="name" class="form-label">Full name</label>
+                    <input type="text" class="form-control" id="name" placeholder="Joelmo Silva">
+                </div>
+
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="email" placeholder="you@company.com">
+                </div>
+
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <div class="input-wrapper">
+                        <input type="password" class="form-control" id="password" placeholder="Create a password">
+                        <button type="button" class="input-icon-btn" aria-label="Show password">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
+                                <circle cx="12" cy="12" r="3" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="password-strength">
+                        <div class="strength-segment is-weak"></div>
+                        <div class="strength-segment is-weak"></div>
+                        <div class="strength-segment"></div>
+                        <div class="strength-segment"></div>
+                    </div>
+                    <p class="strength-label">Weak &middot; use 8+ characters, a number and a symbol</p>
+                </div>
+
+                <div class="mb-3">
+                    <label for="confirm-password" class="form-label">Confirm password</label>
+                    <div class="input-wrapper">
+                        <input type="password" class="form-control" id="confirm-password"
+                            placeholder="Repeat your password">
+                        <button type="button" class="input-icon-btn" aria-label="Show password">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
+                                <circle cx="12" cy="12" r="3" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mb-3 form-check">
+                    <input class="form-check-input" type="checkbox" id="terms">
+                    <label class="form-check-label auth-terms" for="terms">
+                        I agree to the <a href="/terms">Terms of Service</a> and <a href="/privacy">Privacy Policy</a>
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Create account</button>
+            </form>
+
+            <div class="auth-footer">
+                Already have an account? <a href="/login">Log in</a>
+            </div>
+        </div>
+    </div>
+</body>
+<- includes('/partials/scripts') ->
+
+</html>

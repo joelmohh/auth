@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Users - Joelmo Auth Systems</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link rel="stylesheet" href="/public/css/global.css">
+</head>
+<body class="auth-root">
+    <div class="dashboard-shell">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <a href="console-home.html" class="auth-logo" style="text-decoration:none;">
+                <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M16 2L29 9V23L16 30L3 23V9L16 2Z" fill="#15616D"/>
+                    <path d="M11 20L16 12L21 20H11Z" fill="#FFFFFF"/>
+                </svg>
+                <span>Joelmo</span>
+            </a>
+
+            <div class="app-switcher" id="app-switcher">
+                <button type="button" class="app-switcher-btn" id="app-switcher-btn">
+                    <div class="app-switcher-icon">SP</div>
+                    <div>
+                        <div class="app-switcher-name">Shop &amp; Pay</div>
+                        <div class="app-switcher-sub">Auth app</div>
+                    </div>
+                    <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+
+                <div class="app-switcher-menu">
+                    <button type="button" class="app-switcher-item is-current">
+                        <div class="app-switcher-item-icon">SP</div>
+                        Shop &amp; Pay
+                    </button>
+                    <button type="button" class="app-switcher-item">
+                        <div class="app-switcher-item-icon">FD</div>
+                        Food Delivery
+                    </button>
+                    <button type="button" class="app-switcher-item">
+                        <div class="app-switcher-item-icon">IN</div>
+                        Internal Tools
+                    </button>
+                    <div class="app-switcher-divider"></div>
+                    <button type="button" class="app-switcher-item app-switcher-create">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M12 5v14M5 12h14"/></svg>
+                        Create new app
+                    </button>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <p class="sidebar-label">Authentication</p>
+                <ul class="sidebar-nav">
+                    <li>
+                        <a href="#" class="sidebar-link is-active">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                            Users
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="sidebar-link">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                            Sign-in method
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="sidebar-link">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v5"/></svg>
+                            Templates
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="sidebar-link">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-4"/></svg>
+                            Usage
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="sidebar-section">
+                <p class="sidebar-label">System</p>
+                <ul class="sidebar-nav">
+                    <li>
+                        <a href="#" class="sidebar-link">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+                            Project settings
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="sidebar-avatar">JS</div>
+                <div>
+                    <div class="sidebar-user-name">Joelmo Silva</div>
+                    <div class="sidebar-user-email">joelmo@joelmo.dev</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main content -->
+        <main class="main-content">
+            <div class="topbar">
+                <div class="topbar-search">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                    <input type="text" class="form-control" placeholder="Search by email, phone or UID...">
+                </div>
+                <div class="topbar-actions">
+                    <button type="button" class="icon-btn" aria-label="Notifications">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                    </button>
+                    <div class="sidebar-avatar">JS</div>
+                </div>
+            </div>
+
+            <section class="dashboard-section">
+                <h2 class="section-title">Overview</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-card-top">
+                            <div class="stat-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                            </div>
+                            <span class="stat-trend is-up">+8.2%</span>
+                        </div>
+                        <p class="stat-label">Total users</p>
+                        <p class="stat-value">12,847</p>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-card-top">
+                            <div class="stat-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 8l-4 4-2-2"/></svg>
+                            </div>
+                            <span class="stat-trend is-up">+3.4%</span>
+                        </div>
+                        <p class="stat-label">Verified accounts</p>
+                        <p class="stat-value">10,932</p>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-card-top">
+                            <div class="stat-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            </div>
+                            <span class="stat-trend is-down">-1.1%</span>
+                        </div>
+                        <p class="stat-label">Failed sign-in attempts</p>
+                        <p class="stat-value">214</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="dashboard-section">
+                <h2 class="section-title">Users</h2>
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="panel-header-title">Recently active <span class="panel-header-count">(12,847 total)</span></span>
+                        <button type="button" class="btn-secondary">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+                            Add user
+                        </button>
+                    </div>
+
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Identifier</th>
+                                <th>Providers</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th>Last sign-in</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <div class="user-cell">
+                                        <div class="user-avatar">JS</div>
+                                        <div>
+                                            <div class="user-email">joelmo@joelmo.dev</div>
+                                            <div class="user-uid">UID: 8a2f1c9e...</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="provider-icons">
+                                        <svg viewBox="0 0 24 24"><path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.3-1.68 3.8-5.5 3.8-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.15.8 3.88 1.5l2.64-2.5C16.83 3 14.6 2 12 2 6.98 2 3 5.98 3 11s3.98 9 9 9c5.2 0 8.6-3.6 8.6-8.7 0-.6-.07-1-.15-1.4H12Z"/></svg>
+                                        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C6.48 2 2 6.58 2 12.2c0 4.5 2.87 8.3 6.84 9.65.5.1.68-.22.68-.5v-1.75c-2.78.62-3.37-1.36-3.37-1.36-.46-1.2-1.11-1.5-1.11-1.5-.9-.63.07-.62.07-.62 1 .07 1.53 1.05 1.53 1.05.9 1.55 2.34 1.1 2.91.85.09-.66.35-1.1.64-1.36-2.22-.26-4.56-1.14-4.56-5.05 0-1.12.39-2.03 1.03-2.74-.1-.26-.45-1.32.1-2.75 0 0 .84-.28 2.75 1.05a9.3 9.3 0 0 1 5 0c1.9-1.33 2.75-1.05 2.75-1.05.55 1.43.2 2.49.1 2.75.64.71 1.03 1.62 1.03 2.74 0 3.92-2.35 4.78-4.58 5.04.36.32.68.94.68 1.9v2.82c0 .28.18.6.69.5A10.03 10.03 0 0 0 22 12.2C22 6.58 17.52 2 12 2Z"/></svg>
+                                    </div>
+                                </td>
+                                <td><span class="status-pill is-verified">Verified</span></td>
+                                <td class="text-muted-cell">Feb 3, 2026</td>
+                                <td class="text-muted-cell">2 min ago</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div class="user-cell">
+                                        <div class="user-avatar">MC</div>
+                                        <div>
+                                            <div class="user-email">maria.costa@gmail.com</div>
+                                            <div class="user-uid">UID: f13e77b0...</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="provider-icons">
+                                        <svg viewBox="0 0 24 24"><path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.3-1.68 3.8-5.5 3.8-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.15.8 3.88 1.5l2.64-2.5C16.83 3 14.6 2 12 2 6.98 2 3 5.98 3 11s3.98 9 9 9c5.2 0 8.6-3.6 8.6-8.7 0-.6-.07-1-.15-1.4H12Z"/></svg>
+                                    </div>
+                                </td>
+                                <td><span class="status-pill is-verified">Verified</span></td>
+                                <td class="text-muted-cell">Jan 28, 2026</td>
+                                <td class="text-muted-cell">14 min ago</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div class="user-cell">
+                                        <div class="user-avatar">DL</div>
+                                        <div>
+                                            <div class="user-email">diego.lima@outlook.com</div>
+                                            <div class="user-uid">UID: 3bcf902a...</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="provider-icons">
+                                        <svg viewBox="0 0 24 24"><rect x="2" y="2" width="9" height="9" fill="#F35325"/><rect x="13" y="2" width="9" height="9" fill="#81BC06"/><rect x="2" y="13" width="9" height="9" fill="#05A6F0"/><rect x="13" y="13" width="9" height="9" fill="#FFBA08"/></svg>
+                                    </div>
+                                </td>
+                                <td><span class="status-pill is-pending">Pending</span></td>
+                                <td class="text-muted-cell">Jan 22, 2026</td>
+                                <td class="text-muted-cell">1 hour ago</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div class="user-cell">
+                                        <div class="user-avatar">RA</div>
+                                        <div>
+                                            <div class="user-email">rafael.alves@joelmo.dev</div>
+                                            <div class="user-uid">UID: 9c04e1d5...</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="provider-icons">
+                                        <svg viewBox="0 0 24 24"><path fill="#5865F2" d="M20 5.5A17 17 0 0 0 15.9 4l-.3.6a13 13 0 0 1 3.6 1.3 15.6 15.6 0 0 0-14.4 0A13 13 0 0 1 8.4 4.6L8.1 4A17 17 0 0 0 4 5.5C1.6 9 1 12.4 1.2 15.7a17 17 0 0 0 5 2.5l.9-1.3a11 11 0 0 1-1.6-.8l.4-.3a12.3 12.3 0 0 0 10.2 0l.4.3c-.5.3-1 .6-1.6.8l.9 1.3a17 17 0 0 0 5-2.5C23 12 22 8.6 20 5.5ZM9 14.2c-.8 0-1.4-.8-1.4-1.7 0-1 .6-1.7 1.4-1.7s1.4.8 1.4 1.7c0 1-.6 1.7-1.4 1.7Zm6 0c-.8 0-1.4-.8-1.4-1.7 0-1 .6-1.7 1.4-1.7s1.4.8 1.4 1.7c0 1-.6 1.7-1.4 1.7Z"/></svg>
+                                    </div>
+                                </td>
+                                <td><span class="status-pill is-verified">Verified</span></td>
+                                <td class="text-muted-cell">Jan 15, 2026</td>
+                                <td class="text-muted-cell">3 hours ago</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div class="user-cell">
+                                        <div class="user-avatar">BT</div>
+                                        <div>
+                                            <div class="user-email">bianca.torres@yahoo.com</div>
+                                            <div class="user-uid">UID: 6f7a8e12...</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="provider-icons">
+                                        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M17.5 3h3l-7 8 8 10h-6.3l-5-6.4L4 21H1l7.5-8.6L1 3h6.4l4.5 5.8L17.5 3Zm-1.1 16h1.7L7.7 5H5.9l10.5 14Z"/></svg>
+                                    </div>
+                                </td>
+                                <td><span class="status-pill is-pending">Pending</span></td>
+                                <td class="text-muted-cell">Jan 9, 2026</td>
+                                <td class="text-muted-cell">1 day ago</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+    <script>
+        // Visual-only: toggle the app switcher dropdown
+        const switcher = document.getElementById('app-switcher');
+        const switcherBtn = document.getElementById('app-switcher-btn');
+        switcherBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            switcher.classList.toggle('is-open');
+        });
+        document.addEventListener('click', () => switcher.classList.remove('is-open'));
+    </script>
+</body>
+
+</html>

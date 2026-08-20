@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Apps - Joelmo Auth Systems</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link rel="stylesheet" href="/public/css/global.css">
+</head>
+<body>
+    <div class="topbar" style="max-width:1080px; margin:0 auto; padding:24px 36px 0;">
+        <div class="auth-logo" style="margin-bottom:0;">
+            <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M16 2L29 9V23L16 30L3 23V9L16 2Z" fill="#15616D"/>
+                <path d="M11 20L16 12L21 20H11Z" fill="#FFFFFF"/>
+            </svg>
+            <span>Joelmo</span>
+        </div>
+        <div class="topbar-actions">
+            <button type="button" class="icon-btn" aria-label="Notifications">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            </button>
+            <div class="sidebar-avatar">JS</div>
+        </div>
+    </div>
+
+    <header class="console-header">
+        <div>
+            <h1>Your apps</h1>
+            <p>All authentication apps under your account</p>
+        </div>
+        <button type="button" class="btn-primary" style="width:auto; display:inline-flex; align-items:center; gap:8px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M12 5v14M5 12h14"/></svg>
+            Create new app
+        </button>
+    </header>
+
+    <div class="console-body">
+        <div class="status-banner">
+            <span class="dot"></span>
+            <strong>All systems operational</strong>
+            <span class="sep">&middot; 12,847 total users across 3 apps</span>
+            <a href="#">View status page</a>
+        </div>
+
+        <div class="apps-grid">
+            <a href="dashboard.html" class="app-card">
+                <div class="app-card-top">
+                    <div class="app-card-icon">SP</div>
+                    <span class="status-pill is-verified">Operational</span>
+                </div>
+                <div class="app-card-name">Shop &amp; Pay</div>
+                <div class="app-card-id">app_8f2a91c</div>
+                <div class="app-card-stats">
+                    <div>
+                        <div class="app-card-stat-value">6,204</div>
+                        <div class="app-card-stat-label">Users</div>
+                    </div>
+                    <div>
+                        <div class="app-card-stat-value">312</div>
+                        <div class="app-card-stat-label">Sign-ins today</div>
+                    </div>
+                </div>
+            </a>
+
+            <a href="dashboard.html" class="app-card">
+                <div class="app-card-top">
+                    <div class="app-card-icon">FD</div>
+                    <span class="status-pill is-verified">Operational</span>
+                </div>
+                <div class="app-card-name">Food Delivery</div>
+                <div class="app-card-id">app_1b77e04</div>
+                <div class="app-card-stats">
+                    <div>
+                        <div class="app-card-stat-value">4,918</div>
+                        <div class="app-card-stat-label">Users</div>
+                    </div>
+                    <div>
+                        <div class="app-card-stat-value">201</div>
+                        <div class="app-card-stat-label">Sign-ins today</div>
+                    </div>
+                </div>
+            </a>
+
+            <a href="dashboard.html" class="app-card">
+                <div class="app-card-top">
+                    <div class="app-card-icon">IN</div>
+                    <span class="status-pill is-pending">Degraded</span>
+                </div>
+                <div class="app-card-name">Internal Tools</div>
+                <div class="app-card-id">app_c30fa27</div>
+                <div class="app-card-stats">
+                    <div>
+                        <div class="app-card-stat-value">1,725</div>
+                        <div class="app-card-stat-label">Users</div>
+                    </div>
+                    <div>
+                        <div class="app-card-stat-value">44</div>
+                        <div class="app-card-stat-label">Sign-ins today</div>
+                    </div>
+                </div>
+            </a>
+
+            <button type="button" class="create-app-card">
+                <div class="create-app-card-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+                </div>
+                <span>Create new app</span>
+            </button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+</body>
+
+</html>
