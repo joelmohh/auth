@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 
-<- includes('/partials/head') ->
+<%- include('./partials/head') -%>
 
     <body>
+        <div class="toast-container"></div>
         <div class="auth-container">
             <div class="auth-logo">
                 <!-- SVG logo -->
@@ -42,7 +43,7 @@
 
                 <div class="auth-divider">or continue with email</div>
 
-                <form>
+                <form id="login-form">
                     <div class="mb-3">
                         <label for="email" class="form-label">Email</label>
                         <input type="email" class="form-control" id="email" placeholder="example@company.com">
@@ -57,10 +58,10 @@
                             <input class="form-check-input" type="checkbox" id="remember">
                             <label class="form-check-label" for="remember">Remember me</label>
                         </div>
-                        <a href="/reset-password" style="font-size: 13px;">Forgot your password?</a>
+                        <a href="/reset-password" class="" style="font-size: 13px;">Forgot your password?</a>
                     </div>
 
-                    <button type="submit" class="btn btn-primary">Login</button>
+                    <button id="login-button" type="submit" class="btn btn-primary">Login</button>
                 </form>
 
                 <div class="auth-footer">
@@ -69,5 +70,5 @@
             </div>
         </div>
     </body>
-    <- includes('/partials/scripts') ->
+    <%- include('./partials/scripts') -%>
 </html>

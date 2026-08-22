@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 
-<- includes('/partials/head', { title: 'Create Account - Joelmo Auth Systems' }) ->
+<%- include('./partials/head', { title: 'Create Account - Joelmo Auth Systems' }) -%>
 
 <body>
+    <div class="toast-container" aria-live="polite" aria-atomic="true"></div>
     <div class="auth-container">
         <div class="auth-logo">
             <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -124,6 +125,6 @@
         </div>
     </div>
 </body>
-<- includes('/partials/scripts') ->
+<%- include('./partials/scripts') -%>
 
 </html>

@@ -10,6 +10,7 @@ app.set('trust proxy', true);
 const PORT = process.env.PORT || 3000;
 
 app.use('/api/auth', require('./routes/auth.api.routes'));
+app.use('/', require('./routes/static.routes'));
 
 app.get('/', (req, res) => {
     res.render('index');

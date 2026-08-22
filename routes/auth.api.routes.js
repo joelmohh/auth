@@ -10,8 +10,8 @@ const Session = require("../models/Session");
 const Otp = require("../models/Otp");
 
 const { logError } = require("../modules/logs");
-const { sendEmail } = require("../modules/SMTP/send");
-const { validate } = require("../modules/validate");
+const sendEmail = require("../modules/SMTP/send");
+const validate = require("../modules/validate");
 
 Router.post('/login', validate, async (req, res) => {
     try {
@@ -205,3 +205,5 @@ Router.post("/register", async (req, res) => {
 
     }
 })
+
+module.exports = Router;
