@@ -13,22 +13,47 @@ const { logError } = require("../modules/logs");
 const sendEmail = require("../modules/SMTP/send");
 const validate = require("../modules/validate");
 
+function createOtpAndSend(userId, email) {
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiry = Date.now() + 10 * 60 * 1000;
+
+    return Otp.create({ userId, otp, expiresAt: new Date(otpExpiry) })
+        .then(() => sendEmail(email, "Your OTP Code", `<p>Your OTP code is: <strong>${otp}</strong></p><p>This code will expire in 10 minutes.</p>`));
+}
+
+async function issueSession(user, req, res, type) {
+    const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+    const refreshToken = crypto.randomBytes(64).toString('hex');
+
+    await Session.create({
+        userId: user._id,
+        refreshToken,
+        deviceInfo: req.headers['user-agent'] || '',
+        ipAddress: req.ip || '',
+        type
+    });
+
+    res.cookie('refreshToken', refreshToken, { httpOnly: true, secure: true, sameSite: 'Strict', maxAge: 7 * 24 * 60 * 60 * 1000 });
+    return accessToken;
+}
+
 Router.post('/login', validate, async (req, res) => {
     try {
-        const { email, username , password } = req.body;
+        const { email, username, password } = req.body;
 
-        if(!email && !username || !password){
+        if((!email && !username) || !password){
             return res.status(400).json({ success: false, message: "Email or username and password are required." });
         }
 
-        const user = await User.findOne({ email });
+        const query = email ? { email } : { username };
+        const user = await User.findOne(query);
 
         if(!user){
-            return res.status(404).json({ success: false, message: "Invalid credentials." });
+            return res.status(401).json({ success: false, message: "Invalid credentials." });
         }
 
         if(!user.isVerified){
-            return res.status(403).json({ success: false, message: "Account not verified. Please verify your account.", verified: false });
+            return res.status(403).json({ success: true, message: "Account not verified. Please verify your account.", verified: false });
         }
 
         const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -37,20 +62,7 @@ Router.post('/login', validate, async (req, res) => {
             return res.status(400).json({ success: false, message: "Invalid credentials." });
         }
 
-        const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
-        const refreshToken = crypto.randomBytes(64).toString('hex');
-
-        const session = new Session({
-            userId: user._id,
-            refreshToken: refreshToken,
-            deviceInfo: req.headers['user-agent'] || '',
-            ipAddress: req.ip || '',
-            type: 'login'
-        })
-
-        await session.save();
-
-        res.cookie('refreshToken', refreshToken, { httpOnly: true, secure: true, sameSite: 'Strict', maxAge: 7 * 24 * 60 * 60 * 1000 });
+        const accessToken = await issueSession(user, req, res, 'login');
         res.status(200).json({ success: true, message: "Login successful.", accessToken });
 
     } catch (error) {
@@ -94,7 +106,9 @@ Router.post('/verify-otp', async (req, res) => {
 
         await Otp.deleteOne({ userId: user._id });
 
-        res.status(200).json({ success: true, message: "OTP verified successfully." });
+        const accessToken = await issueSession(user, req, res, 'register');
+
+        res.status(200).json({ success: true, message: "OTP verified successfully.", accessToken });
 
     } catch (error) {
         logError(error);
@@ -111,29 +125,14 @@ Router.post('/resend-otp', async (req, res) => {
             return res.status(400).json({ success: false, message: "Email is required." });
         }
 
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const otpExpiry = Date.now() + 10 * 60 * 1000; 
-
         const user = await User.findOne({ email });
 
         if(!user){
             return res.status(404).json({ success: false, message: "User not found." });
         }
 
-        const existingOtp = await Otp.findOne({ userId: user._id })
-
-        if(existingOtp){
-            await Otp.deleteOne({ userId: user._id });
-        }
-
-        const newOtp = new Otp({
-            userId: user._id,
-            otp,
-            expiresAt: new Date(otpExpiry)
-        })
-        await newOtp.save();
-
-        await sendEmail(email, "Your OTP Code", `<p>Your OTP code is: <strong>${otp}</strong></p><p>This code will expire in 10 minutes.</p>`);
+        await Otp.deleteMany({ userId: user._id });
+        await createOtpAndSend(user._id, email);
 
         res.status(200).json({ success: true, message: "OTP sent successfully." });
     
@@ -143,7 +142,7 @@ Router.post('/resend-otp', async (req, res) => {
     }
 })
 
-Router.post("/register", async (req, res) => {
+Router.post("/signup", async (req, res) => {
     try { 
         const { username, email, password, phone, address, birthday, fullName, bio, profilePicture, banner } = req.body;
 
@@ -166,13 +165,13 @@ Router.post("/register", async (req, res) => {
             username,
             email,
             password: hashedPassword,
-            phone,
-            address,
-            birthday,
-            fullName,
-            bio,
-            profilePicture,
-            banner
+            phone: phone || "",
+            address: address || "",
+            birthday: birthday || null,
+            fullName: fullName || "",
+            bio: bio || "",
+            profilePicture: profilePicture || "",
+            banner: banner || "",
         })
 
         const savedUser = await newUser.save();
@@ -180,22 +179,15 @@ Router.post("/register", async (req, res) => {
         if(!savedUser){
             return res.status(500).json({ success: false, message: "Failed to create user." });
         }
-        
-        const accessToken = jwt.sign({ id: savedUser._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
-        const refreshToken = crypto.randomBytes(64).toString('hex');
 
-        const session = new Session({
-            userId: savedUser._id,
-            refreshToken: refreshToken,
-            deviceInfo: req.headers['user-agent'] || '',
-            ipAddress: req.ip || '',
-            type: 'register'
-        })
+        await createOtpAndSend(savedUser._id, savedUser.email);
 
-        await session.save();
-
-        res.cookie('refreshToken', refreshToken, { httpOnly: true, secure: true, sameSite: 'Strict', maxAge: 7 * 24 * 60 * 60 * 1000 });
-        res.status(201).json({ success: true, message: "User registered successfully.", accessToken });
+        res.status(201).json({
+            success: true,
+            message: "Account created. Please check your email for the verification code.",
+            email: savedUser.email,
+            requiresVerification: true,
+        });
 
     } catch (error) {
 

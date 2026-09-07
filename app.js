@@ -1,6 +1,11 @@
 const express = require('express');
 require('dotenv').config();
 
+const mongoose = require('mongoose');
+mongoose.connect(process.env.MONGO_URI)
+    .then(() => console.log('[INFO] Connected to MongoDB'))
+    .catch((err) => console.error('[ERROR] MongoDB connection error:', err));
+
 const app = express();
 app.use(express.json());
 app.set('view engine', 'ejs');

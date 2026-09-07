@@ -25,53 +25,144 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    // login form validation and submission
+
     const loginForm = document.getElementById('login-form');
     const loginButton = document.getElementById('login-button');
 
+    const email = document.getElementById('email');
+    const password = document.getElementById('password');
+
+    const errorMessages = {
+        email: document.getElementById('email-error'),
+        password: document.getElementById('password-error')
+    };
+
+    [email, password].forEach((input) => {
+        input.addEventListener('input', () => {
+            input.classList.remove('invalid');
+            input.setAttribute('aria-invalid', 'false');
+            errorMessages[input.id].textContent = '';
+        });
+    });
+
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        loginButton.disabled = true;
-        loginButton.textContent = 'Logging in...';
 
-        const email = document.getElementById('email')
-        const password = document.getElementById('password')
         const remember = document.getElementById('remember').checked;
-        
-        if (!email.value || !password.value) {
-            showToast('Please fill in all fields.', 'error');
+
+        const emailIsInvalid = !email.value.trim();
+        const passwordIsInvalid = !password.value || password.value.length < 6;
+
+        email.classList.toggle('invalid', emailIsInvalid);
+        password.classList.toggle('invalid', passwordIsInvalid);
+        email.setAttribute('aria-invalid', emailIsInvalid);
+        password.setAttribute('aria-invalid', passwordIsInvalid);
+
+        if (emailIsInvalid || passwordIsInvalid) {
+            if (emailIsInvalid) email.focus();
+            else password.focus();
+            errorMessages.email.classList.add('text-danger');
+            errorMessages.password.classList.add('text-danger');
+            errorMessages.email.textContent = emailIsInvalid ? 'Email is required.' : '';
+            errorMessages.password.textContent = passwordIsInvalid ? 'Password must be at least 6 characters.' : '';
             return;
         }
 
         try {
-
-            if( password.value.length < 6 ) {
-                password.focus();
-                password.classList.add('invalid-feedback');
-                showToast('Login functionality is currently disabled for demonstration purposes.', 'info');
-                return;
-            }
-
-            /*const response = await fetch('/api/auth/login', {
+            loginButton.disabled = true;
+            loginButton.textContent = 'Logging in...';
+            
+            const response = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({ email: email.value, password: password.value, remember })
             });
 
             const data = await response.json();
 
-            if (response.ok) {
-                alert(data.message);
-                window.location.href = '/dashboard'; 
+            if (DataTransferItem.success) {
+                window.location.href = response.redirectURL || '/dashboard'; 
             } else {
-                alert(data.message);
-            }*/
-           
+                if(data.success === false && response.status === 401){
+                    showToast(data.message || 'Invalid credentials. Please try again.', 'error');
+                    errorMessages.email.classList.add('text-danger');
+                    errorMessages.password.classList.add('text-danger');
+                    errorMessages.email.textContent = 'Invalid email or password.';
+                    errorMessages.password.textContent = 'Invalid email or password.';
+                } //else if(response.verified === false){
+                 //   showToast(data.message || 'Account not verified. Please verify your account.', 'error');
+                 //   window.location.href = '/verify-otp';
+                /*}*/ else {
+                    showToast(data.message || 'An error occurred. Please try again.', 'error');
+                }
+            }
+
         } catch (error) {
             console.error('Error:', error);
-            alert('An error occurred. Please try again.');
+            showToast('An error occurred. Please try again.', 'error');
         } finally {
             loginButton.disabled = false;
             loginButton.textContent = 'Login';
+        }
+    });
+
+    // signup form validation and submission
+
+    const signupForm = document.getElementById('signup-form');
+    const signupButton = document.getElementById('signup-button');
+
+    signupForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const fullname = document.getElementById('name');
+        const email = document.getElementById('email');
+        const password = document.getElementById('password');
+
+        const fullnameIsInvalid = !fullname.value.trim();
+        const emailIsInvalid = !email.value.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value);
+        const passwordIsInvalid = !password.value || password.value.length < 6;
+
+        fullname.classList.toggle('invalid', fullnameIsInvalid);
+        email.classList.toggle('invalid', emailIsInvalid);
+        password.classList.toggle('invalid', passwordIsInvalid);
+
+        if (fullnameIsInvalid || emailIsInvalid || passwordIsInvalid) {
+            if (fullnameIsInvalid) fullname.focus();
+            else if (emailIsInvalid) email.focus();
+            else password.focus();
+
+            document.getElementById('fullname-error').textContent = fullnameIsInvalid ? 'Full name is required.' : '';
+            document.getElementById('email-error').textContent = emailIsInvalid ? 'Valid email is required.' : '';
+            document.getElementById('password-error').textContent = passwordIsInvalid ? 'Password must be at least 6 characters.' : '';
+            return;
+        }
+
+        try {
+            signupButton.disabled = true;
+            signupButton.textContent = 'Signing up...';
+
+            const response = await fetch('/api/auth/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fullname: fullname.value, email: email.value, password: password.value })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showToast(data.message || 'Signup successful. Please check your email to verify your account.', 'success');
+                window.location.href = '/verify-otp';
+            } else {
+                showToast(data.message || 'An error occurred. Please try again.', 'error');
+            }
+
+        } catch (error) {
+            console.error('Error:', error);
+            showToast('An error occurred. Please try again.', 'error');
+        } finally {
+            signupButton.disabled = false;
+            signupButton.textContent = 'Create account';
         }
     });
 

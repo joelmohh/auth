@@ -1,7 +1,22 @@
 {
+  "name": "auth",
+  "version": "1.0.0",
+  "description": "Centralized auth service",
+  "homepage": "https://github.com/joelmohh/auth#readme",
+  "bugs": {
+    "url": "https://github.com/joelmohh/auth/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joelmohh/auth.git"
+  },
+  "type": "commonjs",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
   "dependencies": {
     "bcrypt": "^6.0.0",
-    "crypto": "^1.0.1",
     "dotenv": "^17.4.2",
     "ejs": "^6.0.1",
     "express": "^5.2.1",
@@ -10,5 +25,8 @@
     "mongoose": "^9.8.1",
     "nodemailer": "^9.0.5",
     "nodemon": "^3.1.14"
+  },
+  "allowScripts": {
+    "bcrypt@6.0.0": true
   }
 }

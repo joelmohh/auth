@@ -1,0 +1,48 @@
+[2026-08-27T20:25:02.450Z] CastError: Cast to string failed for value "{}" (type Object) at path "email" for model "User"
+    at SchemaString.cast (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/schema/string.js:610:11)
+    at SchemaType.applySetters (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/schemaType.js:1373:12)
+    at SchemaString.castForQuery (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/schema/string.js:704:17)
+    at cast (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/cast.js:315:34)
+    at Query.cast (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/query.js:5233:12)
+    at Query._castConditions (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/query.js:2411:10)
+    at model.Query._findOne (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/query.js:2758:8)
+    at maybeTracedQueryExec (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/query.js:4801:83)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async /home/joelmo/Area de Trabalho/ /auth/routes/auth.api.routes.js:24:22
+[2026-08-27T20:25:28.348Z] CastError: Cast to string failed for value "{}" (type Object) at path "email" for model "User"
+    at SchemaString.cast (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/schema/string.js:610:11)
+    at SchemaType.applySetters (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/schemaType.js:1373:12)
+    at SchemaString.castForQuery (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/schema/string.js:704:17)
+    at cast (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/cast.js:315:34)
+    at Query.cast (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/query.js:5233:12)
+    at Query._castConditions (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/query.js:2411:10)
+    at model.Query._findOne (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/query.js:2758:8)
+    at maybeTracedQueryExec (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/query.js:4801:83)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async /home/joelmo/Area de Trabalho/ /auth/routes/auth.api.routes.js:25:22
+[2026-08-27T20:25:43.834Z] CastError: Cast to string failed for value "{}" (type Object) at path "email" for model "User"
+    at SchemaString.cast (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/schema/string.js:610:11)
+    at SchemaType.applySetters (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/schemaType.js:1373:12)
+    at SchemaString.castForQuery (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/schema/string.js:704:17)
+    at cast (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/cast.js:315:34)
+    at Query.cast (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/query.js:5233:12)
+    at Query._castConditions (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/query.js:2411:10)
+    at model.Query._findOne (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/query.js:2758:8)
+    at maybeTracedQueryExec (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/query.js:4801:83)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async /home/joelmo/Area de Trabalho/ /auth/routes/auth.api.routes.js:25:22
+[2026-08-27T20:26:37.687Z] CastError: Cast to string failed for value "{}" (type Object) at path "email" for model "User"
+    at SchemaString.cast (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/schema/string.js:610:11)
+    at SchemaType.applySetters (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/schemaType.js:1373:12)
+    at SchemaString.castForQuery (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/schema/string.js:704:17)
+    at cast (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/cast.js:315:34)
+    at Query.cast (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/query.js:5233:12)
+    at Query._castConditions (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/query.js:2411:10)
+    at model.Query._findOne (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/query.js:2758:8)
+    at maybeTracedQueryExec (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/query.js:4801:83)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async /home/joelmo/Area de Trabalho/ /auth/routes/auth.api.routes.js:25:22
+[2026-08-27T20:27:15.332Z] MongooseError: Operation `users.findOne()` buffering timed out after 10000ms
+    at Timeout._onTimeout (/home/joelmo/Area de Trabalho/ /auth/node_modules/mongoose/lib/drivers/node-mongodb-native/collection.js:142:25)
+    at listOnTimeout (node:internal/timers:605:17)
+    at process.processTimers (node:internal/timers:541:7)
