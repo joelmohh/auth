@@ -36,3 +36,16 @@ function showToast(message, type = 'info', duration = 3000) {
 function closeToast(toast) {
     if (toast && toast.isConnected) toast.remove();
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (window.location.search.includes('message=')) {
+        const params = new URLSearchParams(window.location.search);
+        const message = params.get('message');
+        const type = params.get('t') || 'info';
+        showToast(message, type);
+
+        // Remove the query parameters from the URL without reloading the page
+        const newUrl = window.location.origin + window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+    }
+})

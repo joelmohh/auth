@@ -12,6 +12,7 @@ const Otp = require("../models/Otp");
 const { logError } = require("../modules/logs");
 const sendEmail = require("../modules/SMTP/send");
 const validate = require("../modules/validate");
+const { issueSession } = require("../modules/auth/session");
 
 function createOtpAndSend(userId, email) {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -21,32 +22,15 @@ function createOtpAndSend(userId, email) {
         .then(() => sendEmail(email, "Your OTP Code", `<p>Your OTP code is: <strong>${otp}</strong></p><p>This code will expire in 10 minutes.</p>`));
 }
 
-async function issueSession(user, req, res, type) {
-    const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
-    const refreshToken = crypto.randomBytes(64).toString('hex');
-
-    await Session.create({
-        userId: user._id,
-        refreshToken,
-        deviceInfo: req.headers['user-agent'] || '',
-        ipAddress: req.ip || '',
-        type
-    });
-
-    res.cookie('refreshToken', refreshToken, { httpOnly: true, secure: true, sameSite: 'Strict', maxAge: 7 * 24 * 60 * 60 * 1000 });
-    return accessToken;
-}
-
 Router.post('/login', validate, async (req, res) => {
     try {
-        const { email, username, password } = req.body;
+        const { email, password } = req.body;
 
-        if((!email && !username) || !password){
-            return res.status(400).json({ success: false, message: "Email or username and password are required." });
+        if(!email || !password){
+            return res.status(400).json({ success: false, message: "Email and password are required." });
         }
 
-        const query = email ? { email } : { username };
-        const user = await User.findOne(query);
+        const user = await User.findOne(email);
 
         if(!user){
             return res.status(401).json({ success: false, message: "Invalid credentials." });
@@ -62,8 +46,8 @@ Router.post('/login', validate, async (req, res) => {
             return res.status(400).json({ success: false, message: "Invalid credentials." });
         }
 
-        const accessToken = await issueSession(user, req, res, 'login');
-        res.status(200).json({ success: true, message: "Login successful.", accessToken });
+        const accessToken = await issueSession(user, req, res, 'login');                    // TODO 
+        res.status(200).json({ success: true, message: "Login successful.", accessToken, redirectURL: '/dashboard' });
 
     } catch (error) {
         logError(error);

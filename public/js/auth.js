@@ -81,19 +81,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const data = await response.json();
 
-            if (DataTransferItem.success) {
-                window.location.href = response.redirectURL || '/dashboard'; 
+            if (data.success) {
+                window.location.href = data.redirectURL || '/dashboard'; 
             } else {
-                if(data.success === false && response.status === 401){
+                if(data.success === false || response.status === 401){
                     showToast(data.message || 'Invalid credentials. Please try again.', 'error');
                     errorMessages.email.classList.add('text-danger');
                     errorMessages.password.classList.add('text-danger');
                     errorMessages.email.textContent = 'Invalid email or password.';
                     errorMessages.password.textContent = 'Invalid email or password.';
-                } //else if(response.verified === false){
-                 //   showToast(data.message || 'Account not verified. Please verify your account.', 'error');
-                 //   window.location.href = '/verify-otp';
-                /*}*/ else {
+                } else if(data.verified === false){
+                    window.location.href = `/verify-otp?message=${encodeURIComponent('Account not verified. Please verify your account.')}&t=error`;
+                } else {
                     showToast(data.message || 'An error occurred. Please try again.', 'error');
                 }
             }
@@ -151,8 +150,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const data = await response.json();
 
             if (data.success) {
-                showToast(data.message || 'Signup successful. Please check your email to verify your account.', 'success');
-                window.location.href = '/verify-otp';
+                window.location.href = `/verify-otp?message=${encodeURIComponent('Signup successful. Please check your email to verify your account.')}&t=success`;
             } else {
                 showToast(data.message || 'An error occurred. Please try again.', 'error');
             }
