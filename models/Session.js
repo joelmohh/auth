@@ -34,7 +34,11 @@ const sessionSchema = new mongoose.Schema({
     createdAt: {
         type: Date,
         default: Date.now,
-        expires: 3600, 
+        expires: '7d', 
+    },
+    expiresAt: {
+        type: Date,
+        default: () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     }
 })
 

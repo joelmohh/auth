@@ -14,6 +14,15 @@ async function verifyToken(req, res, next) {
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         req.user = decoded;
+
+        if (decoded && decoded.id) {
+            const session = await Session.findOne({ userId: decoded.id, revoked: false });
+
+            if (!session || session.expiresAt < new Date() || session.revoked) {
+                return res.status(403).json({ success: false, message: 'Session not found or revoked.' });
+            }
+        }
+
         next();
     } catch (error) {
         logError(error);

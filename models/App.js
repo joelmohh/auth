@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-const { userInfo } = require("node:os");
 
 const appSchema = new mongoose.Schema({
     name:{

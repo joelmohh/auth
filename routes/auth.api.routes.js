@@ -2,6 +2,7 @@ const Router = require("express").Router();
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const validator = require("express-validator");
 
 
 const User = require("../models/User");
@@ -28,6 +29,10 @@ function createOtpAndSend(userId, email) {
 Router.post('/login', validate, async (req, res) => {
     try {
         const { email, password } = req.body;
+
+        if (validator.validationResult(req).isEmpty() === false) {
+            return res.status(400).json({ success: false, message: "Invalid input.", errors: validator.validationResult(req).array() });
+        }
 
         if(!email || !password){
             return res.status(400).json({ success: false, message: "Email and password are required." });
@@ -128,7 +133,7 @@ Router.post('/resend-otp', async (req, res) => {
     
     }catch (error) {
         logError(error);       
-        res.status(500).json({ success: false, message: "Internal server error.", debug: Date.now() });
+        res.status(500).json({ success: false, message: "Internal server error."});
     }
 })
 
