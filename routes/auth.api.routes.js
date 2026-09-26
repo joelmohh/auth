@@ -19,7 +19,10 @@ function createOtpAndSend(userId, email) {
     const otpExpiry = Date.now() + 10 * 60 * 1000;
 
     return Otp.create({ userId, otp, expiresAt: new Date(otpExpiry) })
-        .then(() => sendEmail(email, "Your OTP Code", `<p>Your OTP code is: <strong>${otp}</strong></p><p>This code will expire in 10 minutes.</p>`));
+        .then(() => {
+            console.log(`OTP for user ${userId} is ${otp}. It will expire in 10 minutes.`);
+           // sendEmail(email, "Your OTP Code", `<p>Your OTP code is: <strong>${otp}</strong></p><p>This code will expire in 10 minutes.</p>`);
+        });
 }
 
 Router.post('/login', validate, async (req, res) => {
@@ -30,14 +33,17 @@ Router.post('/login', validate, async (req, res) => {
             return res.status(400).json({ success: false, message: "Email and password are required." });
         }
 
-        const user = await User.findOne(email);
+        const user = await User.findOne({ email });
 
         if(!user){
             return res.status(401).json({ success: false, message: "Invalid credentials." });
         }
 
         if(!user.isVerified){
-            return res.status(403).json({ success: true, message: "Account not verified. Please verify your account.", verified: false });
+            await Otp.deleteMany({ userId: user._id });
+            await createOtpAndSend(user._id, email);
+
+            return res.status(403).json({ success: false, message: "Account not verified. Please verify your account.", verified: false });
         }
 
         const isPasswordValid = await bcrypt.compare(password, user.password);

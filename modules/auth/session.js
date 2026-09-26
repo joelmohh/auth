@@ -1,5 +1,7 @@
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
-const { logError } = require('../utils/logger');
+const Session = require('../../models/Session');
+const { logError } = require('../logs');
 
 async function verifyToken(req, res, next) {
     const authHeader = req.headers['authorization'];

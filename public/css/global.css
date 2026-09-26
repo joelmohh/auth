@@ -301,8 +301,6 @@ input {
     color: var(--muted-text);
 }
 
-.auth-footer a,
-.auth-footer button,
 .otp-resend a.disabled {
     pointer-events: none;
     opacity: 0.5;
