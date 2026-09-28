@@ -16,5 +16,8 @@ Router.get('/verify-otp', (req, res) => {
     res.render('verifyOtp');
 })
 
+Router.get('/dashboard', (req, res) => {
+    res.render('dashboard/index');
+})
 
 module.exports = Router;

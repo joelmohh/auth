@@ -1,0 +1,269 @@
+<%
+const mockOwner = { name: 'Joelmo Silva', email: 'joelmo@joelmo.dev', initials: 'JS' };
+
+const mockApps = [
+    { id: 'shop-and-pay', name: 'Shop & Pay', shortLabel: 'SP', isCurrent: true },
+    { id: 'food-delivery', name: 'Food Delivery', shortLabel: 'FD', isCurrent: false },
+    { id: 'internal-tools', name: 'Internal Tools', shortLabel: 'IN', isCurrent: false },
+];
+
+const mockStats = [
+    { icon: 'users', label: 'Total de usuários', value: '12.847', trend: { direction: 'up', value: '+8.2%' } },
+    { icon: 'shield-check', label: 'Contas verificadas', value: '10.932', trend: { direction: 'up', value: '+3.4%' } },
+    { icon: 'shield-off', label: 'Falhas de login', value: '214', trend: { direction: 'down', value: '-1.1%' } },
+];
+
+const mockUsers = [
+    { name: 'Joelmo Silva', email: 'joelmo@joelmo.dev', uid: '8a2f1c9e...', providers: ['google', 'github'], status: 'verified', createdAt: '3 fev 2026', lastSignIn: 'há 2 min' },
+    { name: 'Maria Costa', email: 'maria.costa@gmail.com', uid: 'f13e77b0...', providers: ['google'], status: 'verified', createdAt: '28 jan 2026', lastSignIn: 'há 14 min' },
+    { name: 'Diego Lima', email: 'diego.lima@outlook.com', uid: '3bcf902a...', providers: ['microsoft'], status: 'pending', createdAt: '22 jan 2026', lastSignIn: 'há 1 hora' },
+    { name: 'Rafael Alves', email: 'rafael.alves@joelmo.dev', uid: '9c04e1d5...', providers: ['discord'], status: 'verified', createdAt: '15 jan 2026', lastSignIn: 'há 3 horas' },
+    { name: 'Bianca Torres', email: 'bianca.torres@yahoo.com', uid: '6f7a8e12...', providers: ['x'], status: 'pending', createdAt: '9 jan 2026', lastSignIn: 'há 1 dia' },
+];
+
+const owner = (locals.owner) || mockOwner;
+const apps = (locals.apps) || mockApps;
+const stats = (locals.stats) || mockStats;
+const users = (locals.users) || mockUsers;
+const usersTotal = (typeof locals.usersTotal === 'number') ? locals.usersTotal : users.length;
+
+const currentApp = apps.find((a) => a.isCurrent) || apps[0];
+
+const providerIcons = {
+    google: '<svg viewBox="0 0 24 24"><path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.3-1.68 3.8-5.5 3.8-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.15.8 3.88 1.5l2.64-2.5C16.83 3 14.6 2 12 2 6.98 2 3 5.98 3 11s3.98 9 9 9c5.2 0 8.6-3.6 8.6-8.7 0-.6-.07-1-.15-1.4H12Z"/></svg>',
+    github: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C6.48 2 2 6.58 2 12.2c0 4.5 2.87 8.3 6.84 9.65.5.1.68-.22.68-.5v-1.75c-2.78.62-3.37-1.36-3.37-1.36-.46-1.2-1.11-1.5-1.11-1.5-.9-.63.07-.62.07-.62 1 .07 1.53 1.05 1.53 1.05.9 1.55 2.34 1.1 2.91.85.09-.66.35-1.1.64-1.36-2.22-.26-4.56-1.14-4.56-5.05 0-1.12.39-2.03 1.03-2.74-.1-.26-.45-1.32.1-2.75 0 0 .84-.28 2.75 1.05a9.3 9.3 0 0 1 5 0c1.9-1.33 2.75-1.05 2.75-1.05.55 1.43.2 2.49.1 2.75.64.71 1.03 1.62 1.03 2.74 0 3.92-2.35 4.78-4.58 5.04.36.32.68.94.68 1.9v2.82c0 .28.18.6.69.5A10.03 10.03 0 0 0 22 12.2C22 6.58 17.52 2 12 2Z"/></svg>',
+    microsoft: '<svg viewBox="0 0 24 24"><rect x="2" y="2" width="9" height="9" fill="#F35325"/><rect x="13" y="2" width="9" height="9" fill="#81BC06"/><rect x="2" y="13" width="9" height="9" fill="#05A6F0"/><rect x="13" y="13" width="9" height="9" fill="#FFBA08"/></svg>',
+    discord: '<svg viewBox="0 0 24 24"><path fill="#5865F2" d="M20 5.5A17 17 0 0 0 15.9 4l-.3.6a13 13 0 0 1 3.6 1.3 15.6 15.6 0 0 0-14.4 0A13 13 0 0 1 8.4 4.6L8.1 4A17 17 0 0 0 4 5.5C1.6 9 1 12.4 1.2 15.7a17 17 0 0 0 5 2.5l.9-1.3a11 11 0 0 1-1.6-.8l.4-.3a12.3 12.3 0 0 0 10.2 0l.4.3c-.5.3-1 .6-1.6.8l.9 1.3a17 17 0 0 0 5-2.5C23 12 22 8.6 20 5.5ZM9 14.2c-.8 0-1.4-.8-1.4-1.7 0-1 .6-1.7 1.4-1.7s1.4.8 1.4 1.7c0 1-.6 1.7-1.4 1.7Zm6 0c-.8 0-1.4-.8-1.4-1.7 0-1 .6-1.7 1.4-1.7s1.4.8 1.4 1.7c0 1-.6 1.7-1.4 1.7Z"/></svg>',
+    x: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M17.5 3h3l-7 8 8 10h-6.3l-5-6.4L4 21H1l7.5-8.6L1 3h6.4l4.5 5.8L17.5 3Zm-1.1 16h1.7L7.7 5H5.9l10.5 14Z"/></svg>',
+};
+
+const statIcons = {
+    users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    'shield-check': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="M9 12l2 2 4-4"/></svg>',
+    'shield-off': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+};
+
+function initialsFor(name) {
+    return (name || '?').split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase();
+}
+%>
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<%- include('../partials/head', { title: 'Usuários - Joelmo Auth Systems' }) -%>
+
+    <body>
+        <div class="toast-container"></div>
+
+        <div class="dashboard-shell">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <a href="/dashboard" class="auth-logo" style="text-decoration:none;">
+                    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M16 2L29 9V23L16 30L3 23V9L16 2Z" fill="#15616D" />
+                        <path d="M11 20L16 12L21 20H11Z" fill="#FFFFFF" />
+                    </svg>
+                    <span>Joelmo</span>
+                </a>
+
+                <div class="app-switcher" id="app-switcher">
+                    <button type="button" class="app-switcher-btn" id="app-switcher-btn">
+                        <div class="app-switcher-icon"><%= currentApp.shortLabel %></div>
+                        <div>
+                            <div class="app-switcher-name"><%= currentApp.name %></div>
+                            <div class="app-switcher-sub">Auth app</div>
+                        </div>
+                        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+                    </button>
+
+                    <div class="app-switcher-menu">
+                        <% apps.forEach(function (app) { %>
+                        <button type="button" class="app-switcher-item <%= app.id === currentApp.id ? 'is-current' : '' %>">
+                            <div class="app-switcher-item-icon"><%= app.shortLabel %></div>
+                            <%= app.name %>
+                        </button>
+                        <% }) %>
+                        <div class="app-switcher-divider"></div>
+                        <button type="button" class="app-switcher-item app-switcher-create">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M12 5v14M5 12h14" /></svg>
+                            Criar novo app
+                        </button>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <p class="sidebar-label">Autenticação</p>
+                    <ul class="sidebar-nav">
+                        <li>
+                            <a href="/dashboard" class="sidebar-link is-active">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
+                                Usuários
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" class="sidebar-link">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
+                                Métodos de login
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" class="sidebar-link">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /></svg>
+                                Página de autorização
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" class="sidebar-link">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 9h18M8 4v5" /></svg>
+                                Modelos de e-mail
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="sidebar-section">
+                    <p class="sidebar-label">Sistema</p>
+                    <ul class="sidebar-nav">
+                        <li>
+                            <a href="#" class="sidebar-link">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18" /><path d="M18 17V9M13 17V5M8 17v-4" /></svg>
+                                Uso
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" class="sidebar-link">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" /></svg>
+                                Configurações do projeto
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="sidebar-footer">
+                    <div class="sidebar-avatar"><%= owner.initials || initialsFor(owner.name) %></div>
+                    <div>
+                        <div class="sidebar-user-name"><%= owner.name %></div>
+                        <div class="sidebar-user-email"><%= owner.email %></div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main content -->
+            <main class="main-content">
+                <div class="topbar">
+                    <div class="topbar-search">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" /></svg>
+                        <input type="text" class="form-control" id="user-search" placeholder="Buscar por e-mail, telefone ou UID...">
+                    </div>
+                    <div class="topbar-actions">
+                        <button type="button" class="icon-btn" aria-label="Sair" id="logout-btn" title="Sair">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="M16 17l5-5-5-5" /><path d="M21 12H9" /></svg>
+                        </button>
+                        <div class="sidebar-avatar"><%= owner.initials || initialsFor(owner.name) %></div>
+                    </div>
+                </div>
+
+                <section class="dashboard-section">
+                    <h2 class="section-title">Visão geral</h2>
+                    <div class="stats-grid">
+                        <% stats.forEach(function (stat) { %>
+                        <div class="stat-card">
+                            <div class="stat-card-top">
+                                <div class="stat-icon"><%- statIcons[stat.icon] || statIcons.users %></div>
+                                <% if (stat.trend) { %>
+                                <span class="stat-trend is-<%= stat.trend.direction %>"><%= stat.trend.value %></span>
+                                <% } %>
+                            </div>
+                            <p class="stat-label"><%= stat.label %></p>
+                            <p class="stat-value"><%= stat.value %></p>
+                        </div>
+                        <% }) %>
+                    </div>
+                </section>
+
+                <section class="dashboard-section">
+                    <h2 class="section-title">Usuários</h2>
+                    <div class="panel">
+                        <div class="panel-header">
+                            <span class="panel-header-title">
+                                Recém-ativos
+                                <span class="panel-header-count">(<%= usersTotal.toLocaleString('pt-BR') %> no total)</span>
+                            </span>
+                            <button type="button" class="btn-secondary" id="add-user-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+                                Adicionar usuário
+                            </button>
+                        </div>
+
+                        <% if (users.length === 0) { %>
+                            <p class="text-muted-cell" style="padding: 4px 0 12px;">Nenhum usuário ainda.</p>
+                        <% } else { %>
+                        <div style="overflow-x:auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Identificador</th>
+                                        <th>Provedores</th>
+                                        <th>Status</th>
+                                        <th>Criado em</th>
+                                        <th>Último login</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% users.forEach(function (user) { %>
+                                    <tr>
+                                        <td>
+                                            <div class="user-cell">
+                                                <div class="user-avatar"><%= initialsFor(user.name) %></div>
+                                                <div>
+                                                    <div class="user-email"><%= user.email %></div>
+                                                    <div class="user-uid">UID: <%= user.uid %></div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="provider-icons">
+                                                <% (user.providers || []).forEach(function (provider) { %>
+                                                    <%- providerIcons[provider] || '' %>
+                                                <% }) %>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="status-pill is-<%= user.status %>">
+                                                <%= user.status === 'verified' ? 'Verificado' : 'Pendente' %>
+                                            </span>
+                                        </td>
+                                        <td class="text-muted-cell"><%= user.createdAt %></td>
+                                        <td class="text-muted-cell"><%= user.lastSignIn %></td>
+                                    </tr>
+                                    <% }) %>
+                                </tbody>
+                            </table>
+                        </div>
+                        <% } %>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </body>
+    <%- include('../partials/scripts') -%>
+    <script>
+        // Visual: alternar o menu do app switcher
+        const switcher = document.getElementById('app-switcher');
+        const switcherBtn = document.getElementById('app-switcher-btn');
+        switcherBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            switcher.classList.toggle('is-open');
+        });
+        document.addEventListener('click', () => switcher.classList.remove('is-open'));
+
+        document.getElementById('logout-btn').addEventListener('click', async function () {
+            try {
+                await fetch('/api/auth/logout', { method: 'POST' });
+            } catch (err) {
+                // segue para o login mesmo se a chamada falhar
+            }
+            window.location.href = '/login';
+        });
+    </script>
+</html>

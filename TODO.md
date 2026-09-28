@@ -1,261 +1,104 @@
-# Roadmap da Plataforma de Autenticação
+# TODO — Caminho para um MVP seguro e legalmente conforme
 
-## Objetivo final
+> Este documento substitui a seção de roadmap geral por um checklist focado: o mínimo necessário para
+> colocar o fluxo de autenticação atual em produção com segurança aceitável e conformidade com a LGPD.
+> O roadmap multi-app/OAuth completo (organizações, consoles, SDKs etc.) fica para depois — ver
+> "Fora do escopo do MVP" no final.
 
-Transformar o projeto em uma plataforma de autenticação multi-app, na qual cada usuário possa criar e administrar seus próprios aplicativos de autenticação, configurar provedores OAuth/OIDC, personalizar a experiência visual e fornecer autenticação para aplicações externas.
+## Já resolvido (não repetir)
 
-## Diagnóstico atual
+- [x] `cookie-parser` instalado e configurado.
+- [x] Rota `/` duplicada/morta removida.
+- [x] `Session.expiresAt` criado no schema; TTL do `createdAt` alinhado com o `maxAge` do cookie (7 dias).
+- [x] `username` com índice `unique`.
+- [x] Imports mortos (`node:os`) removidos.
+- [x] JWT carrega `sessionId`; `verifyToken` valida a sessão específica (`_id`, `userId`, `revoked`, `expiresAt`).
+- [x] `verifyRefreshToken` passa a checar `revoked`.
+- [x] `requireAuth` unificado como alias de `verifyToken` (sem duplicação divergente).
+- [x] Refresh token armazenado como hash (`sha256`), nunca em texto puro no banco.
 
-O projeto atualmente é um protótipo visual com partes do fluxo de autenticação implementadas.
+## 🔴 Segurança — bloqueadores para o MVP
 
-### O que já existe
+Sem isso, não é seguro liberar para usuários reais, mesmo em uma versão inicial.
 
-- Aplicação Express com EJS.
-- Conexão com MongoDB via Mongoose.
-- Cadastro com senha.
-- Login com senha.
-- Verificação por OTP enviado por e-mail.
-- Estrutura inicial de sessões e refresh token.
-- Modelos iniciais de usuário, app, sessão, OTP e rede social.
-- Telas visuais de login, cadastro, OTP, reset de senha e dashboard.
-- SMTP para envio de e-mails.
+- [ ] **Rate limiting** em `/login`, `/signup`, `/verify-otp`, `/resend-otp` e (quando existir) `/reset-password`.
+      Sugestão: `express-rate-limit`, por IP + por conta (ex.: 5 tentativas / 15 min).
+- [ ] **Limite de tentativas de OTP** por código (contador no próprio documento `Otp` ou bloqueio após N tentativas
+      erradas), independente do rate limit de rede.
+- [ ] **Enviar OTP de verdade por e-mail** — descomentar `sendEmail(...)` em `createOtpAndSend` e remover o
+      `console.log` do código (hoje o código de verificação vaza no log do servidor e o usuário real nunca recebe).
+- [ ] **Trocar `Math.random()` por `crypto.randomInt(100000, 999999)`** na geração do OTP (gerador não
+      criptográfico é previsível).
+- [ ] **TTL automático no model `Otp`** (índice `expires` sobre `expiresAt`, ou similar) para o documento sumir
+      sozinho quando expira, em vez de depender de o app lembrar de deletar.
+- [ ] **Endpoint de logout** que seta `revoked: true` na sessão (hoje a checagem de revogação existe, mas nada
+      no código realmente revoga uma sessão).
+- [ ] **Fluxo de reset de senha funcional**: token de uso único, com expiração curta, invalidado após uso —
+      hoje só existe a tela (`resetPassword.ejs`), sem rota de API por trás.
+- [ ] **Validação de entrada real** com `express-validator`: hoje o middleware `validate` (e a checagem manual
+      adicionada em `/login`) não fazem nada, porque não há nenhuma chain (`body('email').isEmail()`, etc.)
+      registrada nas rotas. Aplicar em `/login`, `/signup`, `/verify-otp`, `/resend-otp`.
+- [ ] **Política mínima de senha** no `/signup` (tamanho mínimo pelo menos; idealmente checar contra senhas
+      comuns/vazadas).
+- [ ] **`helmet`** adicionado ao `app.js` e CORS configurado explicitamente (hoje não há nenhum dos dois).
+- [ ] **Validação de variáveis de ambiente no boot** (`JWT_SECRET`, `MONGO_URI`, `SMTP_*`) — falhar rápido e
+      com mensagem clara se algo obrigatório estiver ausente, em vez de quebrar de forma confusa na primeira
+      requisição.
+- [ ] **Handler de erro global do Express** (hoje cada rota trata erro individualmente; um throw fora dos
+      `try/catch` derruba a request sem resposta JSON padronizada).
+- [ ] **Revisar `app.set('trust proxy', true)`** antes de ir pra produção — hoje confia cegamente em qualquer
+      `X-Forwarded-For`. Ajustar para o número de proxies reais na frente da aplicação (ou IP específico do
+      load balancer/CDN).
+- [ ] **Garantir que segredos nunca vão para log** (`logs.js`) — revisar todos os `logError` para não incluir
+      senha, token de acesso/refresh ou código OTP em texto claro no stack/mensagem logada.
+- [ ] **Índice único em `Session.refreshToken`** (defesa em profundidade; colisão é improvável com
+      `crypto.randomBytes(64)`, mas o índice também acelera a busca).
 
-### Problemas atuais
+## 🟠 Conformidade legal (LGPD) — bloqueadores para o MVP
 
-- OAuth social ainda não possui implementação real.
-- Os botões de Google, GitHub, Apple, Microsoft e outros são apenas visuais.
-- `App.js`, `Social.js` e `Notifications.js` não exportam seus models.
-- O campo global `User.app` não suporta múltiplos aplicativos.
-- O e-mail é globalmente único, impedindo isolamento por app.
-- `password` é obrigatório, impedindo usuários exclusivamente sociais.
-- O modelo `Social` não armazena o identificador estável retornado pelo provedor.
-- Refresh tokens são armazenados em texto puro.
-- Refresh tokens não possuem rotação nem detecção de reutilização.
-- O TTL da sessão é incompatível com a duração declarada do refresh token.
-- OTP usa `Math.random()` e não possui limite de tentativas ou rate limit.
-- Recuperação de senha não possui API funcional.
-- Não existem middleware de autenticação e autorização.
-- Não existe isolamento de dados por app.
-- O console e o dashboard usam dados estáticos.
-- O frontend possui referências quebradas, incluindo `DataTransferItem.success`, `name` versus `fullName` e formulários inexistentes em algumas páginas.
-- Não existem testes automatizados.
-- Não existem logs de auditoria, métricas, consentimento OAuth ou revogação completa de tokens.
+Aplicável mesmo em MVP, porque o sistema já coleta dados pessoais (nome, e-mail, telefone, endereço,
+data de nascimento, foto, IP, device info).
 
-## Arquitetura alvo
+- [ ] **Política de Privacidade e Termos de Uso** publicados e linkados na tela de `/signup`, com **aceite
+      explícito** (checkbox não pré-marcado) registrado no momento do cadastro.
+- [ ] **Base legal definida** para cada dado coletado — hoje o cadastro pede `phone`, `address`, `birthday`,
+      `bio`, `profilePicture`, `banner` sem que fique claro por que são necessários. Reavaliar: campos que não
+      são essenciais para o MVP devem ser removidos ou marcados como opcionais com finalidade explícita
+      (princípio da minimização, art. 6º, III da LGPD).
+- [ ] **Endpoint de exclusão de conta** que apaga (ou anonimiza) o `User` e faz cascade nos documentos
+      relacionados: `Session`, `Otp`, `Social`, `Notification`. Hoje não existe nenhuma rota de exclusão.
+- [ ] **Endpoint de exportação/acesso aos dados** (mesmo que simples: um JSON com os dados do próprio usuário)
+      para atender ao direito de acesso e portabilidade (art. 18).
+- [ ] **Retenção definida para dados que hoje ficam indefinidamente**: logs de erro (`modules/logs.js` nunca
+      limpa arquivos antigos), sessões expiradas/revogadas, OTPs expirados. Definir por quanto tempo cada um
+      fica guardado e automatizar a limpeza.
+- [ ] **Aviso de uso de cookies** (mesmo sendo cookie técnico/essencial de sessão, e não de rastreamento, é
+      boa prática informar no momento do login).
+- [ ] **Confirmar se há tratamento de dados de menores de idade** no público-alvo; se sim, exige consentimento
+      específico dos pais/responsáveis (art. 14) — se não, deixar isso explícito nos Termos de Uso.
+- [ ] **Não logar dados pessoais sensíveis** nos arquivos de log (mesmo item de segurança acima, mas também é
+      exigência legal — art. 46, medidas de segurança).
+- [ ] **Plano mínimo de resposta a incidente**: quem é avisado e em quanto tempo se houver vazamento (art. 48
+      exige comunicação à ANPD e aos titulares "em prazo razoável"). Não precisa ser elaborado para o MVP, mas
+      precisa existir por escrito.
+- [ ] **Verificar contratos/DPA dos fornecedores** que processam dados em nome de vocês (provedor de e-mail
+      SMTP, hospedagem do MongoDB) — confirmar que há cláusula de proteção de dados.
+- [ ] **Definir/related: encarregado de dados (DPO)** e um canal de contato visível (e-mail ou formulário),
+      mesmo que a função seja acumulada por alguém do time no início.
 
-A plataforma deve separar a conta administrativa dos usuários finais dos aplicativos.
+## 🟡 Recomendado antes do lançamento (não bloqueia o MVP, mas é barato resolver agora)
 
-```text
-Usuário administrador
-  └── Workspace/Organization
-        └── Apps de autenticação
-              ├── configurações visuais
-              ├── redirect URIs
-              ├── OAuth clients
-              ├── provedores habilitados
-              ├── políticas de login
-              └── usuários finais
-```
+- [ ] Separar mensagens de erro para falha de infraestrutura vs. token inválido em `verifyToken`
+      (hoje ambos caem no mesmo `403`).
+- [ ] `Otp.otp` comparado com `!==` — considerar comparação em tempo constante para reduzir risco de timing
+      attack (baixo risco prático aqui, mas é barato trocar).
+- [ ] Definir tamanho máximo para campos livres (`bio`, `address`, etc.) no schema, para evitar payloads
+      abusivos.
+- [ ] Adicionar `issuer`/`audience` na assinatura e verificação do JWT.
 
-### Entidades principais
+## Fora do escopo do MVP
 
-- `User`: usuário da plataforma que administra os apps.
-- `Organization` ou `Workspace`: agrupamento e proprietário dos apps.
-- `App`: aplicativo criado pelo administrador.
-- `AppMember`: permissões de administração dentro do app.
-- `EndUser`: usuário final autenticado por um app.
-- `Identity`: vínculo do usuário com Google, GitHub, Apple, Microsoft etc.
-- `OAuthProviderConfig`: configuração de cada provedor OAuth/OIDC.
-- `OAuthClient`: client ID, segredo hash e redirect URIs.
-- `Session`: sessão e refresh token.
-- `AuthTransaction`: estado temporário de login, OAuth, OTP e consentimento.
-- `AuditLog`: eventos de segurança e administração.
-- `CustomDomain`: domínio personalizado, em uma fase posterior.
-
-# TODO
-
-## Fase 0: Corrigir o protótipo atual
-
-- [x] Corrigir os exports de `App`, `Social` e `Notifications`.
-- [ ] Remover imports sem uso.
-- [ ] Corrigir o carregamento condicional em `public/js/auth.js`.
-- [x] Corrigir `DataTransferItem.success` para `data.success`.
-- [ ] Corrigir `fullName` versus `name`.
-- [x] Corrigir o uso de `response.redirectURL` para `data.redirectURL`.
-- [x] Corrigir o uso de `response.verified` para `data.verified` no login.
-- [ ] Criar rotas reais para console e dashboard.
-- [ ] Remover dados mockados das telas administrativas.
-- [ ] Criar tratamento global de erros do Express.
-- [ ] Configurar corretamente cookies e leitura de cookies.
-- [ ] Validar variáveis obrigatórias de ambiente na inicialização.
-- [ ] Adicionar scripts `dev`, `start` e `test` no `package.json`.
-- [ ] Criar testes básicos para cadastro, login e OTP.
-
-### Critério de conclusão
-
-Um usuário consegue cadastrar, verificar a conta e fazer login pelo navegador sem erros de frontend ou backend.
-
-## Fase 1: Fundamentos de segurança
-
-- [ ] Criar middleware `requireAuth`.
-- [ ] Validar JWT com issuer, audience e expiração.
-- [ ] Incluir `userId`, `appId`, scopes e versão da sessão no token.
-- [ ] Armazenar somente hash dos refresh tokens.
-- [ ] Implementar rotação de refresh token.
-- [ ] Detectar e revogar tokens reutilizados.
-- [ ] Corrigir a expiração das sessões.
-- [ ] Configurar cookies `httpOnly`, `secure`, `sameSite` e domínio.
-- [ ] Adicionar rate limit em login, cadastro, OTP e reset de senha.
-- [ ] Trocar `Math.random()` por `crypto.randomInt()` no OTP.
-- [ ] Adicionar limite de tentativas de OTP.
-- [ ] Remover OTP após uso ou expiração.
-- [ ] Criar tokens de reset de senha com uso único e expiração.
-- [ ] Adicionar `helmet` e CORS configurável.
-- [ ] Não registrar senhas, tokens ou códigos OTP nos logs.
-
-### Critério de conclusão
-
-Sessões, OTP e recuperação de senha possuem expiração, revogação, rate limit e testes de abuso.
-
-## Fase 2: Modelo multi-app
-
-- [ ] Remover o campo global `User.app`.
-- [ ] Criar `Organization` ou `Workspace`.
-- [ ] Transformar `App` em uma entidade completa.
-- [ ] Adicionar `appId`, `ownerId`, `organizationId`, `name`, `slug` e `status`.
-- [ ] Adicionar ambientes `development`, `staging` e `production`.
-- [ ] Adicionar `clientId`, `clientSecretHash`, `redirectUris` e `allowedOrigins`.
-- [ ] Adicionar scopes e políticas de autenticação.
-- [ ] Criar relação entre usuários finais e apps.
-- [ ] Permitir o mesmo e-mail em apps diferentes.
-- [ ] Criar índices compostos por `appId` e identidade.
-- [ ] Separar administradores de usuários finais.
-- [ ] Criar RBAC com `owner`, `admin`, `developer`, `analyst` e `support`.
-- [ ] Aplicar autorização por app em todas as rotas administrativas.
-
-### Critério de conclusão
-
-Um administrador consegue criar dois apps isolados e nenhum dado de um app aparece no outro.
-
-## Fase 3: OAuth e provedores sociais
-
-### Login social
-
-- [ ] Criar uma camada abstrata para provedores.
-- [ ] Integrar Google.
-- [ ] Integrar GitHub.
-- [ ] Integrar Microsoft.
-- [ ] Integrar Apple.
-- [ ] Integrar Discord.
-- [ ] Avaliar integração com X.
-- [ ] Usar Authorization Code Flow.
-- [ ] Usar PKCE para clientes públicos.
-- [ ] Validar `state` contra CSRF.
-- [ ] Validar `nonce` em fluxos OIDC.
-- [ ] Validar issuer, audience e assinatura dos tokens.
-- [ ] Armazenar `provider` e `providerSubject`.
-- [ ] Criptografar access tokens e refresh tokens dos provedores.
-- [ ] Permitir várias identidades na mesma conta.
-- [ ] Criar fluxo para conectar e desconectar provedores.
-- [ ] Impedir a remoção do último método de login.
-
-### OAuth/OIDC para aplicações externas
-
-- [ ] Criar endpoint `/oauth/authorize`.
-- [ ] Criar endpoint `/oauth/token`.
-- [ ] Criar endpoint `/oauth/revoke`.
-- [ ] Criar endpoint `/oauth/userinfo`.
-- [ ] Criar endpoint de discovery OIDC.
-- [ ] Criar endpoint JWKS.
-- [ ] Implementar tela de consentimento por app.
-- [ ] Validar rigorosamente `redirect_uri`.
-- [ ] Implementar authorization code de uso único.
-- [ ] Implementar access token e refresh token.
-- [ ] Implementar scopes `openid`, `profile` e `email`.
-- [ ] Permitir scopes customizados por app.
-- [ ] Implementar logout local e logout global.
-- [ ] Permitir revogação por usuário e administrador.
-
-### Critério de conclusão
-
-Uma aplicação externa consegue redirecionar para a plataforma, autenticar por senha ou OAuth social, receber um authorization code e trocá-lo por tokens válidos.
-
-## Fase 4: Console de criação e customização
-
-- [ ] Transformar o console estático em páginas autenticadas.
-- [ ] Criar tela de apps do usuário.
-- [ ] Criar fluxo para criar um app.
-- [ ] Gerar automaticamente `clientId`.
-- [ ] Exibir o client secret somente uma vez.
-- [ ] Permitir rotação do client secret.
-- [ ] Configurar redirect URIs.
-- [ ] Configurar allowed origins.
-- [ ] Habilitar e desabilitar provedores.
-- [ ] Selecionar métodos de autenticação.
-- [ ] Suportar senha, magic link, OTP, OAuth social e passkeys.
-- [ ] Customizar nome, logo, cores, tipografia e fundo.
-- [ ] Customizar textos de login, cadastro, erro e consentimento.
-- [ ] Configurar campos obrigatórios do perfil.
-- [ ] Configurar política de senha.
-- [ ] Configurar verificação de e-mail.
-- [ ] Configurar MFA.
-- [ ] Criar preview em tempo real.
-- [ ] Criar publicação de versões da configuração.
-- [ ] Permitir rollback da configuração anterior.
-
-### Critério de conclusão
-
-Cada usuário consegue criar um app, personalizar a tela de autenticação e usar essa configuração em um fluxo real.
-
-## Fase 5: Administração e operação
-
-- [ ] Listar usuários por app.
-- [ ] Pesquisar por e-mail, telefone e ID.
-- [ ] Visualizar identidades conectadas.
-- [ ] Suspender e reativar usuários.
-- [ ] Revogar sessões.
-- [ ] Forçar reset de senha.
-- [ ] Exportar usuários.
-- [ ] Importar usuários com validação.
-- [ ] Criar logs de auditoria.
-- [ ] Registrar logins, falhas, alterações de senha, OAuth, sessões e configurações.
-- [ ] Criar métricas de login, erros, conversão e provedores.
-- [ ] Criar página de uso e limites.
-- [ ] Criar alertas para comportamento suspeito.
-- [ ] Definir retenção e anonimização de dados.
-
-## Fase 6: Produção e escala
-
-- [ ] Separar ambientes de desenvolvimento, staging e produção.
-- [ ] Usar Redis para rate limit, sessões temporárias e OAuth state.
-- [ ] Usar fila para envio de e-mails.
-- [ ] Migrar logs para armazenamento estruturado.
-- [ ] Configurar rotação de chaves JWT.
-- [ ] Usar KMS ou secret manager para secrets.
-- [ ] Criar health checks.
-- [ ] Criar métricas e tracing.
-- [ ] Configurar backup e restauração do MongoDB.
-- [ ] Criar testes de integração com provedores OAuth.
-- [ ] Criar testes de carga.
-- [ ] Criar documentação de integração.
-- [ ] Criar SDKs para JavaScript, Node e React.
-- [ ] Criar documentação com exemplos.
-- [ ] Adicionar política de privacidade e termos de uso.
-- [ ] Implementar processo de exclusão de dados conforme a LGPD.
-
-# Ordem recomendada
-
-1. Corrigir o protótipo atual.
-2. Implementar segurança, sessões e recuperação de senha.
-3. Criar o modelo multi-app.
-4. Implementar o console autenticado.
-5. Integrar Google e GitHub.
-6. Implementar OAuth/OIDC para apps externos.
-7. Adicionar Microsoft, Apple, Discord e demais provedores.
-8. Adicionar customização visual e políticas de autenticação.
-9. Criar auditoria, métricas e operação.
-10. Preparar produção, SDKs e documentação.
-
-## Decisão estrutural mais importante
-
-A conta que cria e administra aplicativos precisa ser separada dos usuários finais autenticados por esses aplicativos. Manter o modelo atual, baseado em `User.app`, limita múltiplos apps, OAuth, isolamento de dados e personalização por cliente.
+O restante do roadmap original (multi-app, OAuth/OIDC para terceiros, console administrativo, RBAC,
+customização visual, auditoria avançada, SDKs) continua válido como visão de produto, mas não é
+pré-requisito para lançar um MVP seguro e conforme com a lei. Ver histórico do `TODO.md` anterior para
+essas fases.

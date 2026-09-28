@@ -1,9 +1,5 @@
 const Router = require("express").Router();
 const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-const crypto = require("crypto");
-const validator = require("express-validator");
-
 
 const User = require("../models/User");
 const App = require("../models/App");
@@ -29,10 +25,6 @@ function createOtpAndSend(userId, email) {
 Router.post('/login', validate, async (req, res) => {
     try {
         const { email, password } = req.body;
-
-        if (validator.validationResult(req).isEmpty() === false) {
-            return res.status(400).json({ success: false, message: "Invalid input.", errors: validator.validationResult(req).array() });
-        }
 
         if(!email || !password){
             return res.status(400).json({ success: false, message: "Email and password are required." });
