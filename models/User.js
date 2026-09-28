@@ -61,8 +61,9 @@ const userSchema = new mongoose.Schema({
     // User creation information
 
     app:{
-        type: String,
-        default: "default",
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'App',
+        default: null,
     },
     isAdmin: {
         type: Boolean,

@@ -64,9 +64,6 @@ async function verifyRefreshToken(req, res, next) {
         return res.status(500).json({ success: false, message: 'Internal server error.' });
     }
 }
-async function requireAuth(req, res, next) {
-    return verifyToken(req, res, next);
-}
 async function issueSession(user, req, res, type) {
     const refreshToken = crypto.randomBytes(64).toString('hex');
     const refreshTokenHash = hashToken(refreshToken);
@@ -90,4 +87,4 @@ async function issueSession(user, req, res, type) {
 }
 
 
-module.exports = { verifyToken, verifyRefreshToken, requireAuth, issueSession };
+module.exports = { verifyToken, verifyRefreshToken, issueSession };
