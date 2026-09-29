@@ -22,6 +22,14 @@ function createOtpAndSend(userId, email) {
         });
 }
 
+const expressRT = require('express-rate-limit');
+const limiter = expressRT({
+    windowMs: 5 * 60 * 1000, // 15 minutes
+    max: 15,
+    message: 'Too many requests from this IP, please try again after 15 minutes'
+});
+Router.use(limiter);
+
 Router.post('/login', validate, async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -58,9 +66,10 @@ Router.post('/login', validate, async (req, res) => {
     }
 });
 
+
 Router.post('/verify-otp', async (req, res) => {
     try {
-        const { email, otp } = req.body;
+        const { email, otp, appId, redirectURL } = req.body;
 
         if(!email || !otp){
             return res.status(400).json({ success: false, message: "Email and OTP are required." });
@@ -93,9 +102,11 @@ Router.post('/verify-otp', async (req, res) => {
 
         await Otp.deleteOne({ userId: user._id });
 
-        const accessToken = await issueSession(user, req, res, 'register');
+        const tokens = await issueSession(user, req, res, 'register');
 
-        res.status(200).json({ success: true, message: "OTP verified successfully.", accessToken });
+        let finalUrl = `${redirectURL}/?code=${tokens.refreshToken}`
+
+        res.status(200).json({ success: true, message: "OTP verified successfully.", accessToken: tokens.accessToken, redirectURL: finalUrl || '/dashboard' });
 
     } catch (error) {
         logError(error);
@@ -132,6 +143,7 @@ Router.post('/resend-otp', async (req, res) => {
 Router.post("/signup", async (req, res) => {
     try { 
         const { username, email, password, phone, address, birthday, fullName, bio, profilePicture, banner } = req.body;
+        // const { appId } = req.body; 
 
         if(!username || !email || !password){
             return res.status(400).json({ success: false, message: "Required fields are missing." });
@@ -159,6 +171,7 @@ Router.post("/signup", async (req, res) => {
             bio: bio || "",
             profilePicture: profilePicture || "",
             banner: banner || "",
+            app: appId || null
         })
 
         const savedUser = await newUser.save();
@@ -182,6 +195,31 @@ Router.post("/signup", async (req, res) => {
         
         res.status(500).json({ success: false, message: "Internal server error." });
 
+    }
+})
+
+Router.post('/logout', async (req, res) => {
+    try {
+        const token = req.cookies['refreshToken'];
+        if(!token){
+            return res.status(400).json({ success: false, message: "No access token provided." });
+        }
+
+        const session = await Session.findOne({ refreshToken: token });
+        if(!session){
+            return res.status(400).json({ success: false, message: "Invalid session." });
+        }
+
+        session.revoked = true;
+        session.revokedAt = new Date();
+        await session.save();
+
+        res.clearCookie('refreshToken');
+        res.status(200).json({ success: true, message: "Logged out successfully." });
+
+    } catch (error) {
+        logError(error);
+        res.status(500).json({ success: false, message: "Internal server error." });
     }
 })
 

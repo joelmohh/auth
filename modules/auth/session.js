@@ -72,7 +72,7 @@ async function issueSession(user, req, res, type) {
         userId: user._id,
         refreshToken: refreshTokenHash,
         deviceInfo: req.headers['user-agent'] || '',
-        ipAddress: req.ip || '',
+        ipAddress: req.headers['cf-connecting-ip'] || req.ip || 'unknown',
         type
     });
 
@@ -83,7 +83,10 @@ async function issueSession(user, req, res, type) {
     }, process.env.JWT_SECRET, { expiresIn: "1h" });
 
     res.cookie('refreshToken', refreshToken, { httpOnly: true, secure: true, sameSite: 'Strict', maxAge: 7 * 24 * 60 * 60 * 1000 });
-    return accessToken;
+    return {
+        accessToken,
+        refreshToken
+    };
 }
 
 

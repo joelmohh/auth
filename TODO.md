@@ -21,7 +21,7 @@
 
 Sem isso, não é seguro liberar para usuários reais, mesmo em uma versão inicial.
 
-- [ ] **Rate limiting** em `/login`, `/signup`, `/verify-otp`, `/resend-otp` e (quando existir) `/reset-password`.
+- [x] **Rate limiting** em `/login`, `/signup`, `/verify-otp`, `/resend-otp` e (quando existir) `/reset-password`.
       Sugestão: `express-rate-limit`, por IP + por conta (ex.: 5 tentativas / 15 min).
 - [ ] **Limite de tentativas de OTP** por código (contador no próprio documento `Otp` ou bloqueio após N tentativas
       erradas), independente do rate limit de rede.

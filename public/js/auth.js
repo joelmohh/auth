@@ -1,4 +1,6 @@
 document.addEventListener('DOMContentLoaded', function () {
+    const redirectURL = document.params.get('redirectURL') || '/dashboard';
+    const appId = document.params.get('appId') || null;
 
     // toggle password visibility
     document.querySelectorAll('.input-icon-btn').forEach((btn) => {
@@ -102,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const response = await fetch('/api/auth/verify-otp', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, otp })
+                    body: JSON.stringify({ email, otp, appId, redirectURL })
                 });
                 const data = await response.json();
 
@@ -111,7 +113,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
 
-                window.location.href = '/dashboard';
+                window.location.href = data.redirectURL || '/dashboard';
             } catch (error) {
                 console.error('OTP verification error:', error);
                 showOtpError('Unable to verify the code. Please try again.');
@@ -210,7 +212,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const response = await fetch('/api/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: email.value, password: password.value, remember })
+                    body: JSON.stringify({ email: email.value, password: password.value, remember, appId, redirectURL })
                 });
 
                 const data = await response.json();
@@ -331,6 +333,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
+                        appId: appId || null,
+                        redirectURL: redirectURL || null,
                         username: username.value.trim(),
                         email: signupEmail.value.trim(),
                         password: signupPassword.value,
@@ -348,7 +352,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
 
-                window.location.href = `/verify-otp?email=${encodeURIComponent(data.email)}&message=${encodeURIComponent(data.message)}&t=success`;
+                window.location.href = `/verify-otp?email=${encodeURIComponent(data.email)}&message=${encodeURIComponent(data.message)}&t=success&redirectURL=${encodeURIComponent(data.redirectURL)}&appId=${encodeURIComponent(data.appId)}`;
             } catch (error) {
                 console.error('Signup error:', error);
                 showToast('An error occurred. Please try again.', 'error');
