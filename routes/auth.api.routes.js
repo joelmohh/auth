@@ -143,7 +143,7 @@ Router.post('/resend-otp', async (req, res) => {
 Router.post("/signup", async (req, res) => {
     try { 
         const { username, email, password, phone, address, birthday, fullName, bio, profilePicture, banner } = req.body;
-        // const { appId } = req.body; 
+        const { appId } = req.body; 
 
         if(!username || !email || !password){
             return res.status(400).json({ success: false, message: "Required fields are missing." });
@@ -200,11 +200,12 @@ Router.post("/signup", async (req, res) => {
 
 Router.post('/logout', async (req, res) => {
     try {
-        const token = req.cookies['refreshToken'];
+        let token = req.cookies['refreshToken'];
         if(!token){
             return res.status(400).json({ success: false, message: "No access token provided." });
         }
-
+        token = crypto.createHash('sha256').update(token).digest('hex');
+        
         const session = await Session.findOne({ refreshToken: token });
         if(!session){
             return res.status(400).json({ success: false, message: "Invalid session." });

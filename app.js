@@ -12,14 +12,13 @@ const app = express();
 app.use(express.json());
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
-app.set('trust proxy', true);
 app.use(cookieParser());
 
 const PORT = process.env.PORT || 3000;
 
-app.use('/api/auth', require('./routes/auth.api.routes'), apiLimiter);
-app.use('/', require('./routes/static.routes'), generalLimiter);
-app.use('/api/apps', require('./routes/apps.api.routes'), apiLimiter);
+app.use('/api/auth', apiLimiter,require('./routes/auth.api.routes'));
+app.use('/', generalLimiter, require('./routes/static.routes'));
+app.use('/api/apps', apiLimiter, require('./routes/apps.api.routes'));
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

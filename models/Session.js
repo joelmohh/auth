@@ -9,31 +9,29 @@ const sessionSchema = new mongoose.Schema({
     refreshToken: {
         type: String,
         required: true,
+        unique: true,
+        select: false
     },
-    deviceInfo: {
+    userAgent: {
         type: String,
         default: '',
     },
-    ipAddress: {
+    ip: {
         type: String,
         default: '',
     },
-    revoked: {
-        type: Boolean,
-        default: false,
-    },
+
     revokedAt: {
         type: Date,
         default: null,
     },
     revokedBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        default: null,
+        type: String,
+        enum: ['user', 'system', 'password_change']
     },
     createdAt: {
         type: Date,
-        default: Date.now,
+        default: Date.now(),
         expires: '7d', 
     },
     expiresAt: {

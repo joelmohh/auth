@@ -1,52 +1,60 @@
 const mongoose = require("mongoose");
 
 const appSchema = new mongoose.Schema({
+    ownerId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        required: "true",
+        index: true
+    },
     name:{
         type: String,
         required: true,
+        maxlength: 64
     },
-    permissions:{
-        type: [String],
-        default: [],
+    description: {
+        type: String,
+        maxlength: 500
     },
-    owner:{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
+    clientId:{
+        type: String,
         required: true,
+        unique: true
     },
-    description:{
+    clientSecret: {
         type: String,
-        default: "",
+        required: true,
+        unique: true
     },
-    profilePicture:{
+    redirectUris: [{type:string}],
+    scopes: [{type:string}],
+    providers: [{
+        provider: {
+            type: String,
+            required: true
+        },
+        enabled: {
+            type: Boolean,
+            default: true
+        },
+        clientId: String,
+        clientSecret:{
+            type: String,
+            select: false
+        }
+    }],
+    theme: {
+        primaryColor: { type: string, default: "#FFF"}, //CHANGE LATER
+        backgroundColor: String,
+        logoUrl: String,
+        bannerUrl: String,
+        darkMode: { type: Boolean, default: true }
+    },
+    status: {
         type: String,
-        default: "",
-    },
-    banner:{
-        type: String,
-        default: "",
-    },
-    backgroundColor:{
-        type: String,
-        default: "#000000",
-    },
-
-    redirectURLs:{
-        type: [String],
-        default: [],
-    },
-    userInfo:{
-        type: [String],
-        default: [],
-    },
-    createdAt:{
-        type: Date,
-        default: Date.now,
-    },
-    updatedAt:{
-        type: Date,
-        default: Date.now,
+        enum: ["active", "disabled"],
+        default: 'active'
     }
-})
+}, {timestamps: true})
 
 module.exports = mongoose.model("App", appSchema);

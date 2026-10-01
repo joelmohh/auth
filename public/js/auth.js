@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', function () {
-    const redirectURL = document.params.get('redirectURL') || '/dashboard';
-    const appId = document.params.get('appId') || null;
+    const redirectURL = new URLSearchParams(window.location.search).get('redirectURL') || '/dashboard';
+    const appId = new URLSearchParams(window.location.search).get('appId') || null;
 
     // toggle password visibility
     document.querySelectorAll('.input-icon-btn').forEach((btn) => {

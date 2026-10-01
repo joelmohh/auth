@@ -1,82 +1,75 @@
-const mongoose = require("mongoose");
-
-const userSchema = new mongoose.Schema({
-
-    // Basic user information
-    
+const UserSchema = new Schema({
     username: {
         type: String,
         required: true,
         unique: true,
+        lowercase: true,
+        trim: true,
+        minlength: 3,
+        maxlength: 32
     },
     email: {
         type: String,
         required: true,
         unique: true,
+        lowercase: true,
+        trim: true
+    },
+    emailVerifiedAt: {
+        type: Date,
+        default: null
     },
     password: {
         type: String,
-        required: true,
+        select: false
     },
-
-    socialConnections:{
-        type: [mongoose.Schema.Types.ObjectId],
-        default: [],
+    profile: {
+        displayName: {
+            type: String,
+            maxlength: 64
+        },
+        avatarUrl: {
+            type: String,
+            maxlength: 512
+        },
+        bannerUrl: {
+            type: String,
+            maxlength: 512
+        },
+        bio: {
+            type: String,
+            maxlength: 280
+        },
+        locale: {
+            type: String,
+            default: 'pt-BR'
+        },
     },
-
-    // Additional data for user profile
-
-    phone: {
-        type: String,
-        default: "",
-    },
+    // Optional data
+    phone: { type: String, maxlength: 20 },
     address: {
-        type: String,
-        default: "",
+        street: String,
+        number: String,
+        complement: String,
+        city: String,
+        state: String,
+        zip: String,
+        country: String
     },
-    birthday: {
-        type: Date,
-        default: null,
-    },
-    fullName: {
-        type: String,
-        default: "",
-    },
+    birthDate: { type: Date },
 
-    // Additional fields for user profile
-
-    bio: {
-        type: String,
-        default: "",
+    // Account general info
+    termsAcceptedAt: { type: Date },
+    termsVersion: { type: String },
+    status: { 
+        type: String, 
+        enum: ['active', 'suspended', 'deleted'], 
+        default: 'active' 
     },
-    profilePicture: {
-        type: String,
-        default: "",
-    }, 
-    banner:{
-        type: String,
-        default: "",
+    lastLoginAt: { 
+        type: Date
     },
-
-    // User creation information
-
-    app:{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'App',
-        default: null,
-    },
-    isAdmin: {
-        type: Boolean,
-        default: false,
-    },
-    isVerified: {
-        type: Boolean,
-        default: false,
-    },
-    verificatedAt: {
-        type: Date,
-        default: null,
-    }
+    deletedAt: { 
+        type: Date 
+    },                   
 }, { timestamps: true });
-
-module.exports = mongoose.model("User", userSchema)

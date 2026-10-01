@@ -6,18 +6,24 @@ const otpSchema = new mongoose.Schema({
         ref: 'User',
         required: true,
     },
-    otp: {
+    purpose:{
+        type: String,
+        enum: ["verify_email", "login", "password_reset"],
+        required: true
+    },
+    code: {
         type: String,
         required: true,
-    },
-    expiresAt: {
-        type: Date,
-        required: true,
+        select: false
     },
     tries: {
         type: Number,
-        default: 0,
-    }
+        default: 0
+    },
+    maxTries:{type: Number, default: 5},
+    lastSentAt:{type: Date, default: Date.now()},
+    expiresAt:{type: Date, required: true, index: {expires: 0}}
 }, { timestamps: true });
+otpSchema.index({ userId: 1, purpose: 1}, {unique: true})
 
 module.exports = mongoose.model("Otp", otpSchema);
