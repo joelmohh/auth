@@ -69,7 +69,7 @@ Router.post('/login', validate, async (req, res) => {
 
 Router.post('/verify-otp', async (req, res) => {
     try {
-        const { email, otp, appId, redirectURL } = req.body;
+        const { email, otp, redirectURL } = req.body;
 
         if(!email || !otp){
             return res.status(400).json({ success: false, message: "Email and OTP are required." });
@@ -92,11 +92,13 @@ Router.post('/verify-otp', async (req, res) => {
             return res.status(400).json({ success: false, message: "OTP has expired. Please request a new one." });
         }
 
-        if(existingOtp.otp !== otp){
+        if(existingOtp.otp !== otp || existingOtp.tries >= existingOtp.maxTries){
+            existingOtp.tries = existingOtp.tries + 1
+            existingOtp.save()
             return res.status(400).json({ success: false, message: "Invalid OTP." });
         }
 
-        user.isVerified = true;
+        user.emailVerifiedAt = true;
         user.verificatedAt = new Date();
         await user.save();
 

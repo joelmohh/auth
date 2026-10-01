@@ -71,15 +71,14 @@ async function issueSession(user, req, res, type) {
     const session = await Session.create({
         userId: user._id,
         refreshToken: refreshTokenHash,
-        deviceInfo: req.headers['user-agent'] || '',
-        ipAddress: req.headers['cf-connecting-ip'] || req.ip || 'unknown',
+        userAgent: req.headers['user-agent'] || '',
+        ip: req.headers['cf-connecting-ip'] || req.ip || 'unknown',
         type
     });
 
     const accessToken = jwt.sign({
         id: user._id,
-        sessionId: session._id,
-        appId: 1 /*TODO user.appId*/
+        sessionId: session._id
     }, process.env.JWT_SECRET, { expiresIn: "1h" });
 
     res.cookie('refreshToken', refreshToken, { httpOnly: true, secure: true, sameSite: 'Strict', maxAge: 7 * 24 * 60 * 60 * 1000 });

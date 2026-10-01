@@ -22,24 +22,21 @@ Router.get('/dashboard', (req, res) => {
 Router.get('/dashboard/apps', (req, res) => {
     res.render('dashboard/apps');
 })
-Router.get('/dashboard/app/:id', (req, res) => {
+Router.get('/dashboard/apps/:id', (req, res) => {
     res.render('dashboard/app');
 })
-Router.get('/dashboard/app/:id/users', (req, res) => {
+Router.get('/dashboard/apps/:id/users', (req, res) => {
     res.render('dashboard/app.users');
 })
-Router.get('/dashboard/app/:id/settings', (req, res) => {
+Router.get('/dashboard/apps/:id/settings', (req, res) => {
     res.render('dashboard/app.settings');
 })
-Router.get('/dashboard/app/:id/analytics', (req, res) => {
+Router.get('/dashboard/apps/:id/analytics', (req, res) => {
     res.render('dashboard/app.analytics');
 })
 
-Router.get('/dashboard/profile', (req, res) => {
+Router.get('/dashboard/account', (req, res) => {
     res.render('dashboard/profile');
-})
-Router.get('/dashboard/settings', (req, res) => {
-    res.render('dashboard/settings');
 })
 
 
