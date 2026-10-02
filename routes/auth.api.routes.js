@@ -213,7 +213,7 @@ Router.post('/logout', async (req, res) => {
             return res.status(400).json({ success: false, message: "Invalid session." });
         }
 
-        session.revoked = true;
+        session.revokedBy = 'user';
         session.revokedAt = new Date();
         await session.save();
 
