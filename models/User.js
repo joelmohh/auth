@@ -1,4 +1,6 @@
-const UserSchema = new Schema({
+const mongoose = require("mongoose")
+
+const UserSchema = new mongoose.Schema({
     username: {
         type: String,
         required: true,
@@ -23,6 +25,8 @@ const UserSchema = new Schema({
         type: String,
         select: false
     },
+
+    // Optional data
     profile: {
         displayName: {
             type: String,
@@ -45,7 +49,6 @@ const UserSchema = new Schema({
             default: 'pt-BR'
         },
     },
-    // Optional data
     phone: { type: String, maxlength: 20 },
     address: {
         street: String,
@@ -73,3 +76,5 @@ const UserSchema = new Schema({
         type: Date 
     },                   
 }, { timestamps: true });
+
+module.exports = mongoose.model('User', UserSchema)

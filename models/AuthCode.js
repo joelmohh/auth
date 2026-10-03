@@ -1,5 +1,5 @@
 const mongoose = require("mongoose")
-const AuthCodeSchema = new Schema({
+const AuthCodeSchema = new mongoose.Schema({
     codeHash: {
         type: String,
         required: true,

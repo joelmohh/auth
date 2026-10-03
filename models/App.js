@@ -26,8 +26,8 @@ const appSchema = new mongoose.Schema({
         required: true,
         unique: true
     },
-    redirectUris: [{type:string}],
-    scopes: [{type:string}],
+    redirectUris: [{type: String}],
+    scopes: [{type: String}],
     providers: [{
         provider: {
             type: String,
@@ -44,7 +44,7 @@ const appSchema = new mongoose.Schema({
         }
     }],
     theme: {
-        primaryColor: { type: string, default: "#FFF"}, //CHANGE LATER
+        primaryColor: { type: String, default: "#FFF"}, //CHANGE LATER
         backgroundColor: String,
         logoUrl: String,
         bannerUrl: String,

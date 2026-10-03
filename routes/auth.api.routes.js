@@ -1,5 +1,7 @@
 const Router = require("express").Router();
 const bcrypt = require("bcrypt");
+const crypto = require("crypto")
+const validator = require("express-validator")
 
 const User = require("../models/User");
 const App = require("../models/App");
@@ -8,17 +10,22 @@ const Otp = require("../models/Otp");
 
 const { logError } = require("../modules/logs");
 const sendEmail = require("../modules/SMTP/send");
-const validate = require("../modules/validate");
 const { issueSession } = require("../modules/auth/session");
 
-function createOtpAndSend(userId, email) {
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+function createOtpAndSend(userId, email, purpose) {
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpiry = Date.now() + 10 * 60 * 1000;
 
-    return Otp.create({ userId, otp, expiresAt: new Date(otpExpiry) })
+    return Otp.insertOne({
+        userId,
+        code,
+        purpose: purpose,
+        expiresAt: new Date(otpExpiry),
+        lastSentAt: Date.now()
+    })
         .then(() => {
-            console.log(`OTP for user ${userId} is ${otp}. It will expire in 10 minutes.`);
-           // sendEmail(email, "Your OTP Code", `<p>Your OTP code is: <strong>${otp}</strong></p><p>This code will expire in 10 minutes.</p>`);
+            console.log(`OTP for user ${userId} is ${code}. It will expire in 10 minutes.`);
+            // sendEmail(email, "Your OTP Code", `<p>Your OTP code is: <strong>${otp}</strong></p><p>This code will expire in 10 minutes.</p>`);
         });
 }
 
@@ -30,21 +37,21 @@ const limiter = expressRT({
 });
 Router.use(limiter);
 
-Router.post('/login', validate, async (req, res) => {
+Router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        if(!email || !password){
+        if (!email || !password) {
             return res.status(400).json({ success: false, message: "Email and password are required." });
         }
 
         const user = await User.findOne({ email });
 
-        if(!user){
+        if (!user) {
             return res.status(401).json({ success: false, message: "Invalid credentials." });
         }
 
-        if(!user.isVerified){
+        if (!user.isVerified) {
             await Otp.deleteMany({ userId: user._id });
             await createOtpAndSend(user._id, email);
 
@@ -53,7 +60,7 @@ Router.post('/login', validate, async (req, res) => {
 
         const isPasswordValid = await bcrypt.compare(password, user.password);
 
-        if(!isPasswordValid){
+        if (!isPasswordValid) {
             return res.status(400).json({ success: false, message: "Invalid credentials." });
         }
 
@@ -71,28 +78,28 @@ Router.post('/verify-otp', async (req, res) => {
     try {
         const { email, otp, redirectURL } = req.body;
 
-        if(!email || !otp){
+        if (!email || !otp) {
             return res.status(400).json({ success: false, message: "Email and OTP are required." });
         }
 
         const user = await User.findOne({ email });
 
-        if(!user){
+        if (!user) {
             return res.status(404).json({ success: false, message: "User not found." });
         }
 
         const existingOtp = await Otp.findOne({ userId: user._id });
 
-        if(!existingOtp){
+        if (!existingOtp) {
             return res.status(404).json({ success: false, message: "OTP not found. Please request a new one." });
         }
 
-        if(existingOtp.expiresAt < new Date()){
+        if (existingOtp.expiresAt < new Date()) {
             await Otp.deleteOne({ userId: user._id });
             return res.status(400).json({ success: false, message: "OTP has expired. Please request a new one." });
         }
 
-        if(existingOtp.otp !== otp || existingOtp.tries >= existingOtp.maxTries){
+        if (existingOtp.otp !== otp || existingOtp.tries >= existingOtp.maxTries) {
             existingOtp.tries = existingOtp.tries + 1
             existingOtp.save()
             return res.status(400).json({ success: false, message: "Invalid OTP." });
@@ -120,81 +127,109 @@ Router.post('/resend-otp', async (req, res) => {
     try {
 
         const { email } = req.body;
-        
-        if(!email){
+
+        if (!email) {
             return res.status(400).json({ success: false, message: "Email is required." });
         }
 
         const user = await User.findOne({ email });
 
-        if(!user){
+        if (!user) {
             return res.status(404).json({ success: false, message: "User not found." });
         }
 
+        const otp = await Otp.findOne({userId: user._id})
+
+        if(Date.now() > (Date.parse(otp.lastSentAt) - 60 * 1000)){
+            return res.status(429).json({success: false, message: "You have to wait at least 1 minute to request a new code."})
+        }
+
         await Otp.deleteMany({ userId: user._id });
-        await createOtpAndSend(user._id, email);
+        await createOtpAndSend(user._id, email, "verify_email");
 
         res.status(200).json({ success: true, message: "OTP sent successfully." });
-    
-    }catch (error) {
-        logError(error);       
-        res.status(500).json({ success: false, message: "Internal server error."});
+
+    } catch (error) {
+        logError(error);
+        res.status(500).json({ success: false, message: "Internal server error." });
     }
 })
 
-Router.post("/signup", async (req, res) => {
-    try { 
-        const { username, email, password, phone, address, birthday, fullName, bio, profilePicture, banner } = req.body;
-        const { appId } = req.body; 
+const signupRules = [
+    // Mandatory
+    validator.body("username").trim().notEmpty().isLength({ min: 3, max: 32 }),
+    validator.body("email").trim().isEmail().normalizeEmail(),
+    validator.body("password").isLength({ min: 8, max: 128 }),
+    validator.body("termsAccepted")
+        .isBoolean().toBoolean()
+        .custom(v => v === true).withMessage("Terms must be accepted."),
 
-        if(!username || !email || !password){
-            return res.status(400).json({ success: false, message: "Required fields are missing." });
-        }
-        if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
-            return res.status(400).json({ success: false, message: "Invalid email format." });
-        }
+    // Profile
+    validator.body("displayName").optional().trim().isLength({ max: 64 }),
+    validator.body("avatarUrl").optional().trim().isURL({ protocols: ["http", "https"] }),
+    validator.body("bannerUrl").optional().trim().isURL({ protocols: ["http", "https"] }),
+    validator.body("bio").optional().trim().isLength({ max: 500 }),
+    validator.body("locale").optional().trim().isLocale(),
 
-        const user = await User.findOne({ $or: [{ username }, { email }] })
+    // Misc
+    validator.body("phone").optional().trim().isMobilePhone("any"),
+    validator.body("birthDate").optional().isISO8601().toDate(),
 
-        if(user){
-            return res.status(400).json({ success: false, message: "Username or email already exists."});
+    // Address
+    validator.body("address").optional().isObject(),
+    validator.body("address.country").if(validator.body("address").exists())
+        .trim().toUpperCase().isISO31661Alpha2(),
+    validator.body("address.city").if(validator.body("address").exists())
+        .trim().notEmpty().isLength({ max: 100 }),
+    validator.body("address.street").optional().trim().isLength({ max: 150 }),
+    validator.body("address.number").optional().trim().isLength({ max: 20 }),
+    validator.body("address.complement").optional().trim().isLength({ max: 100 }),
+    validator.body("address.state").optional().trim().isLength({ max: 100 }),
+    validator.body("address.zip").optional().trim().isPostalCode("any"),
+]
+
+Router.post("/signup", signupRules, async (req, res) => {
+
+    const errors = validator.validationResult(req)
+
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ success: false, message: "One or more fields are invalid or missing.", errors: errors.array() })
+    }
+
+    try {
+        const { password, termsAccepted, ...rest } = validator.matchedData(req, { location: ["body"] })
+
+        const user = await User.findOne({ $or: [{ username: rest.username }, { email: rest.email }] })
+
+        if (user) {
+            return res.status(400).json({ success: false, message: "Username or email already exists" })
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const newUser = new User({
-            username,
-            email,
+        const newUser = await new User({
+            ...rest,
             password: hashedPassword,
-            phone: phone || "",
-            address: address || "",
-            birthday: birthday || null,
-            fullName: fullName || "",
-            bio: bio || "",
-            profilePicture: profilePicture || "",
-            banner: banner || "",
-            app: appId || null
-        })
+            termsAcceptedAt: Date.now()
+        }).save()
 
-        const savedUser = await newUser.save();
-
-        if(!savedUser){
+        if (!newUser) {
             return res.status(500).json({ success: false, message: "Failed to create user." });
         }
 
-        await createOtpAndSend(savedUser._id, savedUser.email);
+        await createOtpAndSend(newUser._id, newUser.email, "verify_email");
 
         res.status(201).json({
             success: true,
             message: "Account created. Please check your email for the verification code.",
-            email: savedUser.email,
+            email: newUser.email,
             requiresVerification: true,
         });
 
     } catch (error) {
 
         logError(error);
-        
+
         res.status(500).json({ success: false, message: "Internal server error." });
 
     }
@@ -203,13 +238,13 @@ Router.post("/signup", async (req, res) => {
 Router.post('/logout', async (req, res) => {
     try {
         let token = req.cookies['refreshToken'];
-        if(!token){
-            return res.status(400).json({ success: false, message: "No access token provided." });
+        if (!token) {
+            return res.status(400).json({ success: false, message: "No refresh token provided." });
         }
         token = crypto.createHash('sha256').update(token).digest('hex');
-        
+
         const session = await Session.findOne({ refreshToken: token });
-        if(!session){
+        if (!session) {
             return res.status(400).json({ success: false, message: "Invalid session." });
         }
 

@@ -1,4 +1,6 @@
-const IdentitySchema = new Schema({
+const mongoose = require("mongoose")
+
+const IdentitySchema = new mongoose.Schema({
     userId: {
         type: ObjectId, 
         ref: 'User', 
