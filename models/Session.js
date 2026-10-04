@@ -20,23 +20,23 @@ const sessionSchema = new mongoose.Schema({
         type: String,
         default: '',
     },
-
+    //TO FIX
     revokedAt: {
         type: Date,
         default: null,
     },
     revokedBy: {
         type: String,
-        enum: ['user', 'system', 'password_change']
+        enum: ['user', 'system', 'password_change', 'reuse_detected']
     },
     createdAt: {
         type: Date,
-        default: Date.now(),
-        expires: '7d', 
+        default: Date.now
     },
     expiresAt: {
         type: Date,
         default: () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        expires: 0
     }
 })
 

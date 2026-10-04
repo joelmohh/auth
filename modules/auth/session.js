@@ -64,29 +64,31 @@ async function verifyRefreshToken(req, res, next) {
         return res.status(500).json({ success: false, message: 'Internal server error.' });
     }
 }
-async function issueSession(user, req, res, type) {
-    const refreshToken = crypto.randomBytes(64).toString('hex');
-    const refreshTokenHash = hashToken(refreshToken);
+
+function signAccessToken(userId, sessionId) {
+    return jwt.sign({ id: userId, sessionId }, process.env.JWT_SECRET, { expiresIn: "1h" });
+}
+
+function setRefreshCookie(res, refreshToken){
+    res.cookie('refreshToken', refreshToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'Strict',
+        path: '/api/auth',
+        maxAge: 7 * 24 * 60 * 60 * 1000
+    })
+}
+
+async function issueSession(user, req, res, type){
+    const refreshToken = crypto.randomBytes(64).toString('hex')
 
     const session = await Session.create({
         userId: user._id,
-        refreshToken: refreshTokenHash,
+        refreshToken: hashToken(refreshToken),
         userAgent: req.headers['user-agent'] || '',
-        ip: req.headers['cf-connecting-ip'] || req.ip || 'unknown',
+        ip: req.headers['cf-connectiong-ip'] || req.ip || 'unknown',
         type
-    });
-
-    const accessToken = jwt.sign({
-        id: user._id,
-        sessionId: session._id
-    }, process.env.JWT_SECRET, { expiresIn: "1h" });
-
-    res.cookie('refreshToken', refreshToken, { httpOnly: true, secure: true, sameSite: 'Strict', maxAge: 7 * 24 * 60 * 60 * 1000 });
-    return {
-        accessToken,
-        refreshToken
-    };
+    })
 }
 
-
-module.exports = { verifyToken, verifyRefreshToken, issueSession };
+module.exports = { hashToken, verifyToken, verifyRefreshToken, issueSession };

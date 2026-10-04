@@ -10,13 +10,17 @@ const Otp = require("../models/Otp");
 
 const { logError } = require("../modules/logs");
 const sendEmail = require("../modules/SMTP/send");
-const { issueSession } = require("../modules/auth/session");
+const { issueSession, hashToken } = require("../modules/auth/session");
 
 function createOtpAndSend(userId, email, purpose) {
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = crypto.randomInt(100000, 1000000).toString()
     const otpExpiry = Date.now() + 10 * 60 * 1000;
 
-    return Otp.insertOne({
+    if(!purpose){
+        throw new Error("Purpose is required")
+    }
+
+    return Otp.create({
         userId,
         code,
         purpose: purpose,
@@ -25,7 +29,7 @@ function createOtpAndSend(userId, email, purpose) {
     })
         .then(() => {
             console.log(`OTP for user ${userId} is ${code}. It will expire in 10 minutes.`);
-            // sendEmail(email, "Your OTP Code", `<p>Your OTP code is: <strong>${otp}</strong></p><p>This code will expire in 10 minutes.</p>`);
+            // sendEmail(email, "Your OTP Code", `<p>Your OTP code is: <strong>${code}</strong></p><p>This code will expire in 10 minutes.</p>`);
         });
 }
 
@@ -33,7 +37,7 @@ const expressRT = require('express-rate-limit');
 const limiter = expressRT({
     windowMs: 5 * 60 * 1000, // 15 minutes
     max: 15,
-    message: 'Too many requests from this IP, please try again after 15 minutes'
+    message: 'Too many requests from this IP, please try again after 5 minutes'
 });
 Router.use(limiter);
 
@@ -45,24 +49,23 @@ Router.post('/login', async (req, res) => {
             return res.status(400).json({ success: false, message: "Email and password are required." });
         }
 
-        const user = await User.findOne({ email });
+        const user = await User.findOne({ email }).select("+password");
+        const isPasswordValid = await bcrypt.compare(password, user.password);
 
         if (!user) {
-            return res.status(401).json({ success: false, message: "Invalid credentials." });
+            return res.status(401).json({ success: false, message: "User not found or invalid credentials." });
         }
 
-        if (!user.isVerified) {
+        if (!isPasswordValid) {
+            return res.status(401).json({ success: false, message: "User not found or invalid credentials." });
+        }
+        if (!user.emailVerifiedAt) {
             await Otp.deleteMany({ userId: user._id });
-            await createOtpAndSend(user._id, email);
+            await createOtpAndSend(user._id, email, "verify_email");
 
             return res.status(403).json({ success: false, message: "Account not verified. Please verify your account.", verified: false });
         }
 
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-
-        if (!isPasswordValid) {
-            return res.status(400).json({ success: false, message: "Invalid credentials." });
-        }
 
         const accessToken = await issueSession(user, req, res, 'login');                    // TODO 
         res.status(200).json({ success: true, message: "Login successful.", accessToken, redirectURL: '/dashboard' });
@@ -85,28 +88,33 @@ Router.post('/verify-otp', async (req, res) => {
         const user = await User.findOne({ email });
 
         if (!user) {
-            return res.status(404).json({ success: false, message: "User not found." });
+            return res.status(404).json({ success: false, message: "OTP expired or not found. Please request a new one." });
         }
 
-        const existingOtp = await Otp.findOne({ userId: user._id });
+        const existingOtp = await Otp.findOneAndUpdate(
+            { userId: user._id, purpose: "verify_email", expiresAt: { $gt: new Date() } },
+            { $inc: { tries: 1 } },
+            { returnDocument: "after" }
+        ).select("+code")
 
         if (!existingOtp) {
-            return res.status(404).json({ success: false, message: "OTP not found. Please request a new one." });
+            return res.status(404).json({ success: false, message: "OTP expired or not found. Please request a new one." });
         }
 
         if (existingOtp.expiresAt < new Date()) {
             await Otp.deleteOne({ userId: user._id });
-            return res.status(400).json({ success: false, message: "OTP has expired. Please request a new one." });
+            return res.status(400).json({ success: false, message: "OTP expired or not found. Please request a new one." });
         }
 
-        if (existingOtp.otp !== otp || existingOtp.tries >= existingOtp.maxTries) {
-            existingOtp.tries = existingOtp.tries + 1
-            existingOtp.save()
+        if (existingOtp.tries > existingOtp.maxTries) {
+            return res.status(429).json({ success: false, message: "Too many attempts. Please request a new code" })
+        }
+
+        if (existingOtp.code !== otp) {
             return res.status(400).json({ success: false, message: "Invalid OTP." });
         }
 
-        user.emailVerifiedAt = true;
-        user.verificatedAt = new Date();
+        user.emailVerifiedAt = new Date();
         await user.save();
 
         await Otp.deleteOne({ userId: user._id });
@@ -138,10 +146,12 @@ Router.post('/resend-otp', async (req, res) => {
             return res.status(404).json({ success: false, message: "User not found." });
         }
 
-        const otp = await Otp.findOne({userId: user._id})
+        const otp = await Otp.findOne({ userId: user._id })
 
-        if(Date.now() > (Date.parse(otp.lastSentAt) - 60 * 1000)){
-            return res.status(429).json({success: false, message: "You have to wait at least 1 minute to request a new code."})
+        if (otp) {
+            if (Date.now() < (Date.parse(otp.lastSentAt) + 60 * 1000)) {
+                return res.status(429).json({ success: false, message: "You have to wait at least 1 minute to request a new code." })
+            }
         }
 
         await Otp.deleteMany({ userId: user._id });
@@ -260,5 +270,68 @@ Router.post('/logout', async (req, res) => {
         res.status(500).json({ success: false, message: "Internal server error." });
     }
 })
+
+Router.post('/refresh', async (req, res) => {
+    try {
+        const raw = req.cookies?.refreshToken;
+
+        if (!raw || typeof raw !== "string") {
+            return res.status(401).json({ success: false, message: "Refresh token is missing." });
+        }
+
+        const oldHash = hashToken(raw);
+        const newRaw = crypto.randomBytes(64).toString('hex');
+
+        const session = await Session.findOneAndUpdate(
+            { refreshToken: oldHash, revoked: false, expiresAt: { $gt: new Date() } },
+            {
+                $set: {
+                    refreshToken: hashToken(newRaw),
+                    previousRefreshToken: oldHash,
+                    rotatedAt: new Date()
+                }
+            },
+            { returnDocument: "after" }
+        );
+
+        if (!session) {
+            const reused = await Session.findOne({ previousRefreshToken: oldHash, revoked: false });
+
+            const GRACE_MS = 10 * 1000;
+            if (reused && Date.now() - reused.rotatedAt.getTime() > GRACE_MS) {
+                reused.revoked = true;
+                reused.revokedBy = 'reuse_detected';
+                reused.revokedAt = new Date();
+                await reused.save();
+            }
+
+            res.clearCookie('refreshToken', { path: '/auth' });
+            return res.status(401).json({ success: false, message: "Invalid or expired session." });
+        }
+
+        const user = await User.findById(session.userId);
+
+        if (!user || !user.emailVerifiedAt) {
+            session.revoked = true;
+            session.revokedBy = 'system';
+            session.revokedAt = new Date();
+            await session.save();
+
+            res.clearCookie('refreshToken', { path: '/auth' });
+            return res.status(401).json({ success: false, message: "Invalid or expired session." });
+        }
+
+        setRefreshCookie(res, newRaw);
+
+        res.status(200).json({
+            success: true,
+            accessToken: signAccessToken(user._id, session._id)
+        });
+
+    } catch (error) {
+        logError(error);
+        res.status(500).json({ success: false, message: "Internal server error." });
+    }
+});
 
 module.exports = Router;
