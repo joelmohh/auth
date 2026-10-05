@@ -2,7 +2,7 @@ const mongoose = require("mongoose")
 
 const IdentitySchema = new mongoose.Schema({
     userId: {
-        type: ObjectId, 
+        type: mongoose.SchemaType.ObjectId, 
         ref: 'User', 
         required: true, 
         index: true
@@ -23,3 +23,5 @@ const IdentitySchema = new mongoose.Schema({
 }, { timestamps: true });
 IdentitySchema.index({ provider: 1, providerUserId: 1 }, { unique: true });
 IdentitySchema.index({ userId: 1, provider: 1 }, { unique: true });
+
+module.exports = mongoose.model("Identity", IdentitySchema)

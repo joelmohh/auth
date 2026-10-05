@@ -20,7 +20,6 @@ const sessionSchema = new mongoose.Schema({
         type: String,
         default: '',
     },
-    //TO FIX
     revokedAt: {
         type: Date,
         default: null,

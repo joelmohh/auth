@@ -25,7 +25,7 @@ async function verifyToken(req, res, next) {
         const session = await Session.findOne({
             _id: decoded.sessionId,
             userId: decoded.id,
-            revoked: false,
+            revokedAt: null,
             expiresAt: { $gt: new Date() }
         });
 
@@ -51,7 +51,7 @@ async function verifyRefreshToken(req, res, next) {
 
     try {
         const refreshTokenHash = hashToken(refreshToken);
-        const session = await Session.findOne({ refreshToken: refreshTokenHash, revoked: false });
+        const session = await Session.findOne({ refreshToken: refreshTokenHash, revokedAt: null });
 
         if (!session || session.expiresAt < new Date()) {
             return res.status(403).json({ success: false, message: 'Invalid refresh token.' });
@@ -89,6 +89,8 @@ async function issueSession(user, req, res, type){
         ip: req.headers['cf-connectiong-ip'] || req.ip || 'unknown',
         type
     })
+    setRefreshCookie(res, refreshToken)
+    return { accessToken: signAccessToken(user._id, session.id), refreshToken: refreshToken }
 }
 
 module.exports = { hashToken, verifyToken, verifyRefreshToken, issueSession };

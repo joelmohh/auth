@@ -338,7 +338,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         username: username.value.trim(),
                         email: signupEmail.value.trim(),
                         password: signupPassword.value,
-                        fullName: document.getElementById('fullName').value.trim(),
+                        termsAccepted: document.getElementById('terms').value,
+
+                        displayName: document.getElementById('fullName').value.trim(),
                         phone: document.getElementById('phone').value.trim(),
                         address: document.getElementById('address').value.trim(),
                         birthday: document.getElementById('birthday').value || null,

@@ -16,7 +16,7 @@ function createOtpAndSend(userId, email, purpose) {
     const code = crypto.randomInt(100000, 1000000).toString()
     const otpExpiry = Date.now() + 10 * 60 * 1000;
 
-    if(!purpose){
+    if (!purpose) {
         throw new Error("Purpose is required")
     }
 
@@ -48,13 +48,14 @@ Router.post('/login', async (req, res) => {
         if (!email || !password) {
             return res.status(400).json({ success: false, message: "Email and password are required." });
         }
-
-        const user = await User.findOne({ email }).select("+password");
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-
+        
+        const user = await User.findOne({ email }).select("+password")
+        
         if (!user) {
             return res.status(401).json({ success: false, message: "User not found or invalid credentials." });
         }
+
+        const isPasswordValid = await bcrypt.compare(password, user.password);
 
         if (!isPasswordValid) {
             return res.status(401).json({ success: false, message: "User not found or invalid credentials." });
@@ -283,7 +284,7 @@ Router.post('/refresh', async (req, res) => {
         const newRaw = crypto.randomBytes(64).toString('hex');
 
         const session = await Session.findOneAndUpdate(
-            { refreshToken: oldHash, revoked: false, expiresAt: { $gt: new Date() } },
+            { refreshToken: oldHash, revokedAt: null, expiresAt: { $gt: new Date() } },
             {
                 $set: {
                     refreshToken: hashToken(newRaw),
@@ -299,7 +300,6 @@ Router.post('/refresh', async (req, res) => {
 
             const GRACE_MS = 10 * 1000;
             if (reused && Date.now() - reused.rotatedAt.getTime() > GRACE_MS) {
-                reused.revoked = true;
                 reused.revokedBy = 'reuse_detected';
                 reused.revokedAt = new Date();
                 await reused.save();
