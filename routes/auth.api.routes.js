@@ -333,5 +333,115 @@ Router.post('/refresh', async (req, res) => {
         res.status(500).json({ success: false, message: "Internal server error." });
     }
 });
+Router.post('/forgot-password', async (req, res) =>{
+    try {
+        const { email } = req.body
+
+        if(!email){
+            res.status(401).json({success: false, message: "Missing required fields"})
+        }
+
+        const user = User.findOne({ email })
+
+        if(!user){
+            res.status(200).json({success: true, message: "If this email exists you will recieve a code."})
+        }
+
+        createOtpAndSend(user._id, email, "password_reset")
+
+        res.status(200).json({success: true, message: "If this email exists you will recieve a code."})
+
+    } catch (err) {
+        logError(err)
+        res.status(500).json({ success: false, message: "Internal server error."})
+    }
+})
+
+Router.post('/reset-password', async (req, res) => {
+    try{
+        const {email, code, confirmPassword, newPassword} = req.body
+
+        if(!email || !code || !confirmPassword || !newPassword){
+            return res.status(401).json({success: false, message: "Missing required fields"})
+        }
+
+        if(String(confirmPassword) !== String(newPassword)){
+            return res.status(400).json({ success: false, message: "Password must match."})
+        }
+
+        const user = User.findOne({email}).select("+password")
+
+        if(!user) {
+            return res.status(401).json({success: false, message: "Something went wrong, verify your credentials and try again."})
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        user.password = hashedPassword
+
+        res.status(200).json({success: true, message: "Password changed successfully."})
+
+    }catch (error){
+        logError(error)
+
+    }
+})
+
+// OAuth Routes
+
+Router.get('/:provider', async (req, res) => {
+    try {
+        let provider = req.params.provider
+        provider = String(provider).toLowerCase()
+
+        if(!provider){
+            return res.status(500).json({success: false, message: "Something went wrong. Please try again"})
+        }
+
+        switch (provider){
+            case "google":
+                return res.status(308).redirect(process.env.GOOGLE_REDIRECT_URL)
+            case "x":
+                return res.status(308).redirect(process.env.X_REDIRECT_URL)
+            case "apple":
+                return res.status(308).redirect(process.env.APPLE_REDIRECT_URL)
+            default:
+                return res.status(308).redirect(process.env.MAIN_URL)
+        }
+
+
+    } catch (error) {
+        logError(error)
+        res.status(500).json({success: false, message: "Internal server error"})
+    }
+})
+// TO BE DEFINED LATER
+/*
+Router.get('/:provider/callback', async (req, res) => {
+    try {
+        let provider = req.params.provider
+        provider = String(provider).toLowerCase()
+
+        if(!provider){
+            return res.status(500).json({success: false, message: "Something went wrong. Please try again"})
+        }
+
+        switch (provider){
+            case "google":
+                return res.status(308).redirect(process.env.GOOGLE_REDIRECT_URL)
+            case "x":
+                return res.status(308).redirect(process.env.X_REDIRECT_URL)
+            case "apple":
+                return res.status(308).redirect(process.env.APPLE_REDIRECT_URL)
+            default:
+                return res.status(308).redirect(process.env.MAIN_URL)
+        }
+
+
+    } catch (error) {
+        logError(error)
+        res.status(500).json({success: false, message: "Internal server error"})
+    }
+})*/
 
 module.exports = Router;
