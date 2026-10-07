@@ -10,7 +10,7 @@ const Otp = require("../models/Otp");
 
 const { logError } = require("../modules/logs");
 const sendEmail = require("../modules/SMTP/send");
-const { issueSession, hashToken } = require("../modules/auth/session");
+const { issueSession, hashToken, setRefreshCookie, signAccessToken} = require("../modules/auth/session");
 
 function createOtpAndSend(userId, email, purpose) {
     const code = crypto.randomInt(100000, 1000000).toString()
@@ -69,7 +69,7 @@ Router.post('/login', async (req, res) => {
 
 
         const accessToken = await issueSession(user, req, res, 'login');                    // TODO 
-        res.status(200).json({ success: true, message: "Login successful.", accessToken, redirectURL: '/dashboard' });
+        res.status(200).json({ success: true, message: "Login successful.", accessToken: accessToken.accessToken, redirectURL: '/dashboard' });
 
     } catch (error) {
         logError(error);

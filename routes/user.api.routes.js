@@ -124,4 +124,31 @@ Router.get('/sessions', verifyToken, async (req, res) => {
     }
 })
 
+Router.get('/sessions/:id', verifyToken, async (req, res) => {
+        try {
+
+        if(!req.user){
+            return res.status(404).json({ success: false, message: "User not found"})
+        }
+
+        const user = await User.findById(req.user._id)
+
+        if(!user){
+            return res.status(404).json({ sucess: false, message: "User not found"})
+        }
+
+        const sessions = Session.find({_id: req.params.id, userId: req.user._id})
+
+        if(!sessions){
+            return res.status(404).json({ sucess: false, message: "No active found"})
+        }
+                                                                                            // TRATAR SECAO
+        res.status(200).json({ success: true, message: "Sessions fetched successfully", data: sessions})
+
+    } catch (error) {
+        logError(error)
+        res.status(500).json({ sucess: false, message: "Internal server error"})
+    }
+})
+
 module.exports = Router

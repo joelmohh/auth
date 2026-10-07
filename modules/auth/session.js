@@ -93,4 +93,4 @@ async function issueSession(user, req, res, type){
     return { accessToken: signAccessToken(user._id, session.id), refreshToken: refreshToken }
 }
 
-module.exports = { hashToken, verifyToken, verifyRefreshToken, issueSession };
+module.exports = { hashToken, verifyToken, verifyRefreshToken, issueSession, setRefreshCookie, signAccessToken };
