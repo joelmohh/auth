@@ -10,27 +10,45 @@ const Otp = require("../models/Otp");
 
 const { logError } = require("../modules/logs");
 const sendEmail = require("../modules/SMTP/send");
-const { issueSession, hashToken, setRefreshCookie, signAccessToken} = require("../modules/auth/session");
+const { issueSession, hashToken, setRefreshCookie, signAccessToken } = require("../modules/auth/session");
 
-function createOtpAndSend(userId, email, purpose) {
-    const code = crypto.randomInt(100000, 1000000).toString()
-    const otpExpiry = Date.now() + 10 * 60 * 1000;
+async function createOtpAndSend(userId, email, purpose) {
+    try {
+        const code = crypto.randomInt(100000, 1000000).toString()
+        const otpExpiry = Date.now() + 10 * 60 * 1000;
 
-    if (!purpose) {
-        throw new Error("Purpose is required")
-    }
+        if (!purpose) {
+            throw new Error("Purpose is required")
+        }
+        const otp = await Otp.findOne({ userId, purpose })
 
-    return Otp.create({
-        userId,
-        code,
-        purpose: purpose,
-        expiresAt: new Date(otpExpiry),
-        lastSentAt: Date.now()
-    })
-        .then(() => {
+        if (otp) {
+            otp.code = code
+            await otp.save()
+                .then(() => {
+                    console.log(`OTP for user ${userId} is ${code}. It will expire in 10 minutes.`);
+                    // sendEmail(email, "Your OTP Code", `<p>Your OTP code is: <strong>${code}</strong></p><p>This code will expire in 10 minutes.</p>`);
+                });
+            return { success: true, messsage: "Otp code send successfully." }
+        }
+        await Otp.create({
+            userId,
+            code,
+            purpose: purpose,
+            expiresAt: new Date(otpExpiry),
+            lastSentAt: Date.now()
+        }).then(() => {
             console.log(`OTP for user ${userId} is ${code}. It will expire in 10 minutes.`);
             // sendEmail(email, "Your OTP Code", `<p>Your OTP code is: <strong>${code}</strong></p><p>This code will expire in 10 minutes.</p>`);
         });
+
+        return { success: true, messsage: "Otp code send successfully." }
+
+
+    } catch (error) {
+        logError(error)
+        res.status(500).json({ success: false, message: "Internal server error" })
+    }
 }
 
 const expressRT = require('express-rate-limit');
@@ -48,9 +66,9 @@ Router.post('/login', async (req, res) => {
         if (!email || !password) {
             return res.status(400).json({ success: false, message: "Email and password are required." });
         }
-        
+
         const user = await User.findOne({ email }).select("+password")
-        
+
         if (!user) {
             return res.status(401).json({ success: false, message: "User not found or invalid credentials." });
         }
@@ -80,7 +98,7 @@ Router.post('/login', async (req, res) => {
 
 Router.post('/verify-otp', async (req, res) => {
     try {
-        const { email, otp, redirectURL } = req.body;
+        const { email, otp, purpose, redirectURL } = req.body;
 
         if (!email || !otp) {
             return res.status(400).json({ success: false, message: "Email and OTP are required." });
@@ -93,7 +111,7 @@ Router.post('/verify-otp', async (req, res) => {
         }
 
         const existingOtp = await Otp.findOneAndUpdate(
-            { userId: user._id, purpose: "verify_email", expiresAt: { $gt: new Date() } },
+            { userId: user._id, purpose: purpose, expiresAt: { $gt: new Date() } },
             { $inc: { tries: 1 } },
             { returnDocument: "after" }
         ).select("+code")
@@ -118,7 +136,7 @@ Router.post('/verify-otp', async (req, res) => {
         user.emailVerifiedAt = new Date();
         await user.save();
 
-        await Otp.deleteOne({ userId: user._id });
+        await Otp.deleteOne({ userId: user._id, purpose });
 
         const tokens = await issueSession(user, req, res, 'register');
 
@@ -135,7 +153,7 @@ Router.post('/verify-otp', async (req, res) => {
 Router.post('/resend-otp', async (req, res) => {
     try {
 
-        const { email } = req.body;
+        const { email, purpose } = req.body;
 
         if (!email) {
             return res.status(400).json({ success: false, message: "Email is required." });
@@ -149,14 +167,19 @@ Router.post('/resend-otp', async (req, res) => {
 
         const otp = await Otp.findOne({ userId: user._id })
 
+
+        if (user.emailVerifiedAt && otp.purpose == 'verify_email' && purpose == 'verify_email') {
+            return res.status(200).json({ success: true, message: "Email already verified" })
+        }
+
         if (otp) {
             if (Date.now() < (Date.parse(otp.lastSentAt) + 60 * 1000)) {
                 return res.status(429).json({ success: false, message: "You have to wait at least 1 minute to request a new code." })
             }
         }
 
-        await Otp.deleteMany({ userId: user._id });
-        await createOtpAndSend(user._id, email, "verify_email");
+        await Otp.deleteMany({ userId: user._id, purpose: purpose });
+        await createOtpAndSend(user._id, email, purpose);
 
         res.status(200).json({ success: true, message: "OTP sent successfully." });
 
@@ -220,6 +243,13 @@ Router.post("/signup", signupRules, async (req, res) => {
 
         const newUser = await new User({
             ...rest,
+            profile: {
+                displayName: rest.displayName,
+                avatarUrl: rest.avatarUrl,
+                bannerUrl: rest.bannerUrl,
+                bio: rest.bio,
+                locale: rest.locale
+            },
             password: hashedPassword,
             termsAcceptedAt: Date.now()
         }).save()
@@ -263,7 +293,7 @@ Router.post('/logout', async (req, res) => {
         session.revokedAt = new Date();
         await session.save();
 
-        res.clearCookie('refreshToken');
+        res.clearCookie('refreshToken', { path: '/api/auth' });
         res.status(200).json({ success: true, message: "Logged out successfully." });
 
     } catch (error) {
@@ -288,7 +318,7 @@ Router.post('/refresh', async (req, res) => {
             {
                 $set: {
                     refreshToken: hashToken(newRaw),
-                    previousRefreshToken: oldHash,
+                    lastRefreshToken: oldHash,
                     rotatedAt: new Date()
                 }
             },
@@ -296,7 +326,7 @@ Router.post('/refresh', async (req, res) => {
         );
 
         if (!session) {
-            const reused = await Session.findOne({ previousRefreshToken: oldHash, revoked: false });
+            const reused = await Session.findOne({ lastRefreshToken: oldHash, revokedAt: null });
 
             const GRACE_MS = 10 * 1000;
             if (reused && Date.now() - reused.rotatedAt.getTime() > GRACE_MS) {
@@ -305,19 +335,18 @@ Router.post('/refresh', async (req, res) => {
                 await reused.save();
             }
 
-            res.clearCookie('refreshToken', { path: '/auth' });
+            res.clearCookie('refreshToken', { path: '/api/auth' });
             return res.status(401).json({ success: false, message: "Invalid or expired session." });
         }
 
         const user = await User.findById(session.userId);
 
         if (!user || !user.emailVerifiedAt) {
-            session.revoked = true;
             session.revokedBy = 'system';
             session.revokedAt = new Date();
             await session.save();
 
-            res.clearCookie('refreshToken', { path: '/auth' });
+            res.clearCookie('refreshToken', { path: '/api/auth' });
             return res.status(401).json({ success: false, message: "Invalid or expired session." });
         }
 
@@ -333,57 +362,58 @@ Router.post('/refresh', async (req, res) => {
         res.status(500).json({ success: false, message: "Internal server error." });
     }
 });
-Router.post('/forgot-password', async (req, res) =>{
+Router.post('/forgot-password', async (req, res) => {
     try {
         const { email } = req.body
 
-        if(!email){
-            res.status(401).json({success: false, message: "Missing required fields"})
+        if (!email) {
+            return res.status(400).json({ success: false, message: "Missing required fields" })
         }
 
-        const user = User.findOne({ email })
+        const user = await User.findOne({ email })
 
-        if(!user){
-            res.status(200).json({success: true, message: "If this email exists you will recieve a code."})
+        if (!user) {
+            return res.status(200).json({ success: true, message: "If this email exists you will recieve a code." })
         }
 
         createOtpAndSend(user._id, email, "password_reset")
 
-        res.status(200).json({success: true, message: "If this email exists you will recieve a code."})
+        res.status(200).json({ success: true, message: "If this email exists you will recieve a code." })
 
     } catch (err) {
         logError(err)
-        res.status(500).json({ success: false, message: "Internal server error."})
+        res.status(500).json({ success: false, message: "Internal server error." })
     }
 })
 
 Router.post('/reset-password', async (req, res) => {
-    try{
-        const {email, code, confirmPassword, newPassword} = req.body
+    try {
+        const { email, code, confirmPassword, newPassword } = req.body
 
-        if(!email || !code || !confirmPassword || !newPassword){
-            return res.status(401).json({success: false, message: "Missing required fields"})
+        if (!email || !code || !confirmPassword || !newPassword) {
+            return res.status(401).json({ success: false, message: "Missing required fields" })
         }
 
-        if(String(confirmPassword) !== String(newPassword)){
-            return res.status(400).json({ success: false, message: "Password must match."})
+        if (String(confirmPassword) !== String(newPassword)) {
+            return res.status(400).json({ success: false, message: "Password must match." })
         }
 
-        const user = User.findOne({email}).select("+password")
+        const user = await User.findOne({ email }).select("+password")
 
-        if(!user) {
-            return res.status(401).json({success: false, message: "Something went wrong, verify your credentials and try again."})
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found." })
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
         user.password = hashedPassword
+        await user.save()
 
-        res.status(200).json({success: true, message: "Password changed successfully."})
+        res.status(200).json({ success: true, message: "Password changed successfully." })
 
-    }catch (error){
+    } catch (error) {
         logError(error)
-
+        res.status(500).json({ success: false, message: "Internal server error." })
     }
 })
 
@@ -394,11 +424,11 @@ Router.get('/:provider', async (req, res) => {
         let provider = req.params.provider
         provider = String(provider).toLowerCase()
 
-        if(!provider){
-            return res.status(500).json({success: false, message: "Something went wrong. Please try again"})
+        if (!provider) {
+            return res.status(500).json({ success: false, message: "Something went wrong. Please try again" })
         }
 
-        switch (provider){
+        switch (provider) {
             case "google":
                 return res.status(308).redirect(process.env.GOOGLE_REDIRECT_URL)
             case "x":
@@ -412,7 +442,7 @@ Router.get('/:provider', async (req, res) => {
 
     } catch (error) {
         logError(error)
-        res.status(500).json({success: false, message: "Internal server error"})
+        res.status(500).json({ success: false, message: "Internal server error" })
     }
 })
 // TO BE DEFINED LATER

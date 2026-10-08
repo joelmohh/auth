@@ -12,6 +12,9 @@ const sessionSchema = new mongoose.Schema({
         unique: true,
         select: false
     },
+    lastRefreshToken:{
+        type: String
+    },
     userAgent: {
         type: String,
         default: '',
@@ -27,6 +30,9 @@ const sessionSchema = new mongoose.Schema({
     revokedBy: {
         type: String,
         enum: ['user', 'system', 'password_change', 'reuse_detected']
+    },
+    rotatedAt:{
+        type: String
     },
     createdAt: {
         type: Date,
