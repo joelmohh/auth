@@ -1,53 +1,99 @@
 const Router = require('express').Router();
+const crypto = require('crypto')
 
 const { verifyToken } = require('../modules/auth/session');
 const App = require('../models/App');
 const User = require('../models/User');
 const { logError } = require('../modules/logs');
+const { encrypt, decrypt } = require('../modules/crypto')
+const { appEditRules } = require('../modules/validator')
 
-Router.get('/get', verifyToken, async (req, res) => {
+Router.get('/', verifyToken, async (req, res) => {
     try {
+
+        if (!req.user) {
+            return res.status(403).json({ status: false, message: "Unauthorized" })
+        }
+
         const apps = await App.find({ owner: req.user.id });
-        res.json({ success: true, apps });
+
+        if (!apps) {
+            return res.status(200).json({ success: true, message: "No apps found", data: [] })
+        }
+
+        res.json({ success: true, message: "User apps fetched successfully", data: apps });
+
     } catch (error) {
         logError(error);
         res.status(500).json({ success: false, message: 'Internal server error.' });
     }
 })
 
-Router.get('/get/:id', verifyToken, async (req, res) => {
+Router.get('/:id', verifyToken, async (req, res) => {
     try {
-        const app = await App.findOne({ _id: req.params.id, owner: req.user.id });
+        if (!req.user) {
+            return res.status(403).json({ success: false, message: "Unauthorized" })
+        }
+
+        const app = await App.findOne({ _id: req.params.id, owner: req.user._id })
+
         if (!app) {
             return res.status(404).json({ success: false, message: 'App not found.' });
         }
-        res.json({ success: true, app });
+        res.json({ success: true, message: "Data fetched successfully", data: app });
     } catch (error) {
         logError(error);
         res.status(500).json({ success: false, message: 'Internal server error.' });
     }
 })
 
-Router.post('/create', verifyToken, async (req, res) => {
+Router.post('/', verifyToken, appEditRules, async (req, res) => {
     try {
-        const { name, description, profilePicture, banner, backgroundColor } = req.body;
-        const newApp = new App({
+
+        if (!req.user || !req.session) {
+            return res.status(403).json({ sucess: false, message: "Unauthorized" })
+        }
+
+        let clientId = '';
+        for (let i = 0; i < 16; i++) {
+            clientId += Math.floor(Math.random() * 10);
+        }
+
+        let clientSecret = crypto.randomBytes(16).toString('hex');
+
+        const { name, description, logoUrl, banner, darkMode, primaryColor } = req.body;
+        const newApp = await App.create({
             name,
             description,
-            profilePicture,
-            banner,
-            backgroundColor,
-            owner: req.user.id
+            owner: req.session.userId,
+            clientSecret: encrypt(clientSecret),
+            clientId: clientId,
+            theme: {
+                primaryColor: primaryColor || '#ffffff',
+                logoUrl: logoUrl,
+                bannerUrl: banner,
+                darkMode: darkMode
+            }
         });
-        await newApp.save();
-        res.json({ success: true, app: newApp });
+
+        res.status(200).json({ success: true, message: "App created successfully", data: newApp })
+
     } catch (error) {
         logError(error);
+        if (error.code === 11000) {
+            res.status(409).json({ success: false, message: `Duplicate entries in ${Object.keys(error.keyValue || {})}` })
+        }
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({
+                success: false,
+                message: error.message
+            });
+        }
         res.status(500).json({ success: false, message: 'Internal server error.' });
     }
 })
 
-Router.put('/details/update/:id', verifyToken, async (req, res) => {
+Router.patch('/:id', verifyToken, async (req, res) => {
     try {
         const { name, description, profilePicture, banner, backgroundColor } = req.body;
         const app = await App.findOneAndUpdate(
@@ -108,7 +154,7 @@ Router.get('/:appId/user/:id', verifyToken, async (req, res) => {
             return res.status(404).json({ success: false, message: 'User not found for this app.' });
         }
 
-        res.json({ success: true, user });        
+        res.json({ success: true, user });
 
     } catch (error) {
         logError(error);
@@ -157,4 +203,3 @@ Router.post('/:appId/user/update/:id', verifyToken, async (req, res) => {
 });
 
 module.exports = Router;
-        

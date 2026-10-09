@@ -24,14 +24,15 @@ const appSchema = new mongoose.Schema({
     clientSecret: {
         type: String,
         required: true,
-        unique: true
+        unique: true,
+        selected: false
     },
     redirectUris: [{type: String}],
     scopes: [{type: String}],
     providers: [{
         provider: {
             type: String,
-            required: true
+            required: false
         },
         enabled: {
             type: Boolean,
@@ -45,7 +46,6 @@ const appSchema = new mongoose.Schema({
     }],
     theme: {
         primaryColor: { type: String, default: "#FFF"}, //CHANGE LATER
-        backgroundColor: String,
         logoUrl: String,
         bannerUrl: String,
         darkMode: { type: Boolean, default: true }

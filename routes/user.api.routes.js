@@ -13,7 +13,7 @@ Router.get('/', verifyToken, async (req, res) => {
             return res.status(500).json({ success: false, message: "Something went wrong. Please, try again." })
         }
 
-        const user = User.findOne({ _id: req.user._id })
+        const user = await User.findOne({ _id: req.user._id })
 
         if (!user) {
             return res.status(404).json({ success: false, message: "Your session is valid, but we couldn't find your user." })
@@ -110,7 +110,7 @@ Router.get('/sessions', verifyToken, async (req, res) => {
             return res.status(404).json({ sucess: false, message: "User not found"})
         }
 
-        const sessions = Session.find({userId: user._id, revokedAt: null})
+        const sessions = await Session.find({userId: user._id, revokedAt: null})
 
         if(!sessions){
             return res.status(404).json({ sucess: false, message: "No active sessions found"})
@@ -137,7 +137,7 @@ Router.get('/sessions/:id', verifyToken, async (req, res) => {
             return res.status(404).json({ sucess: false, message: "User not found"})
         }
 
-        const sessions = Session.find({_id: req.params.id, userId: req.user._id})
+        const sessions = await Session.find({_id: req.params.id, userId: req.user._id})
 
         if(!sessions){
             return res.status(404).json({ sucess: false, message: "No active found"})
