@@ -318,12 +318,6 @@ Router.post('/logout', async (req, res) => {
     }
 })
 
-// Substitui o Router.post('/refresh', ...) do routes/auth.api.routes.js.
-// Usa o que o arquivo já importa: Session, User, crypto, hashToken, signAccessToken, setRefreshCookie, logError.
-//
-// Pré-requisito: no models/Session.js, `rotatedAt` deve ser `type: Date` (hoje é String).
-// A conta abaixo usa new Date(...) para funcionar nos dois casos, mas Date é o certo.
-
 const GRACE_MS = 10 * 1000;
 
 Router.post('/refresh', async (req, res) => {
