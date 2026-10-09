@@ -12,7 +12,7 @@ const { logError } = require("../modules/logs");
 const sendEmail = require("../modules/SMTP/send");
 const { issueSession, hashToken, setRefreshCookie, signAccessToken } = require("../modules/auth/session");
 
-async function createOtpAndSend(userId, email, purpose) {
+async function createOtpAndSend(userId, email, purpose, res) {
     try {
         const code = crypto.randomInt(100000, 1000000).toString()
         const otpExpiry = Date.now() + 10 * 60 * 1000;
@@ -24,6 +24,11 @@ async function createOtpAndSend(userId, email, purpose) {
 
         if (otp) {
             otp.code = code
+            otp.expiresAt = new Date(otpExpiry)
+            otp.purpose = purpose
+            otp.lastSentAt = Date.now()
+            otp.tries = 0
+
             await otp.save()
                 .then(() => {
                     console.log(`OTP for user ${userId} is ${code}. It will expire in 10 minutes.`);
@@ -80,7 +85,7 @@ Router.post('/login', async (req, res) => {
         }
         if (!user.emailVerifiedAt) {
             await Otp.deleteMany({ userId: user._id });
-            await createOtpAndSend(user._id, email, "verify_email");
+            await createOtpAndSend(user._id, email, "verify_email", res);
 
             return res.status(403).json({ success: false, message: "Account not verified. Please verify your account.", verified: false });
         }
@@ -98,7 +103,12 @@ Router.post('/login', async (req, res) => {
 
 Router.post('/verify-otp', async (req, res) => {
     try {
-        const { email, otp, purpose, redirectURL } = req.body;
+        const { email, otp, purpose } = req.body;
+
+        let redirectURL = req.body.redirectURL
+        if (!req.body.redirectURL) {
+            redirectURL = '/dashboard'
+        }
 
         if (!email || !otp) {
             return res.status(400).json({ success: false, message: "Email and OTP are required." });
@@ -111,7 +121,13 @@ Router.post('/verify-otp', async (req, res) => {
         }
 
         const existingOtp = await Otp.findOneAndUpdate(
-            { userId: user._id, purpose: purpose, expiresAt: { $gt: new Date() } },
+            {
+                userId: user._id,
+                ...(purpose !== undefined && { purpose }),
+                expiresAt: {
+                    $gt: new Date()
+                }
+            },
             { $inc: { tries: 1 } },
             { returnDocument: "after" }
         ).select("+code")
@@ -133,8 +149,10 @@ Router.post('/verify-otp', async (req, res) => {
             return res.status(400).json({ success: false, message: "Invalid OTP." });
         }
 
-        user.emailVerifiedAt = new Date();
-        await user.save();
+        if (purpose === 'verify_email') {
+            user.emailVerifiedAt = new Date();
+            await user.save();
+        }
 
         await Otp.deleteOne({ userId: user._id, purpose });
 
@@ -159,7 +177,7 @@ Router.post('/resend-otp', async (req, res) => {
             return res.status(400).json({ success: false, message: "Email is required." });
         }
 
-        const user = await User.findOne({ email });
+        const user = await User.findOne({ email, purpose });
 
         if (!user) {
             return res.status(404).json({ success: false, message: "User not found." });
@@ -167,19 +185,19 @@ Router.post('/resend-otp', async (req, res) => {
 
         const otp = await Otp.findOne({ userId: user._id })
 
-
-        if (user.emailVerifiedAt && otp.purpose == 'verify_email' && purpose == 'verify_email') {
-            return res.status(200).json({ success: true, message: "Email already verified" })
-        }
-
         if (otp) {
             if (Date.now() < (Date.parse(otp.lastSentAt) + 60 * 1000)) {
                 return res.status(429).json({ success: false, message: "You have to wait at least 1 minute to request a new code." })
             }
+
+            if (user.emailVerifiedAt && (otp.purpose == 'verify_email' && purpose == 'verify_email')) {
+                return res.status(200).json({ success: true, message: "Email already verified" })
+            }
+
         }
 
         await Otp.deleteMany({ userId: user._id, purpose: purpose });
-        await createOtpAndSend(user._id, email, purpose);
+        await createOtpAndSend(user._id, email, purpose, res);
 
         res.status(200).json({ success: true, message: "OTP sent successfully." });
 
@@ -258,7 +276,7 @@ Router.post("/signup", signupRules, async (req, res) => {
             return res.status(500).json({ success: false, message: "Failed to create user." });
         }
 
-        await createOtpAndSend(newUser._id, newUser.email, "verify_email");
+        await createOtpAndSend(newUser._id, newUser.email, "verify_email", res);
 
         res.status(201).json({
             success: true,
@@ -323,20 +341,26 @@ Router.post('/refresh', async (req, res) => {
                 }
             },
             { returnDocument: "after" }
-        );
+        )
 
         if (!session) {
-            const reused = await Session.findOne({ lastRefreshToken: oldHash, revokedAt: null });
-
-            const GRACE_MS = 10 * 1000;
-            if (reused && Date.now() - reused.rotatedAt.getTime() > GRACE_MS) {
-                reused.revokedBy = 'reuse_detected';
-                reused.revokedAt = new Date();
-                await reused.save();
+            const reused = await Session.findOne({ lastRefreshToken: oldHash });
+            if (reused) {
+                const GRACE_MS = 10 * 1000;
+                if (((Date.now() - reused.rotatedAt.getTime()) <= GRACE_MS) && reused.revokedAt === null) {
+                    const user = User.findById(reused.userId)
+                    if (user && user.emailVerifiedAt) {
+                        return res.status(200).json({ sucess: true, message: "Session refreshed successfully", data: [signAccessToken(user._id, reused._id)] })
+                    } else {
+                        await Session.updateMany(
+                            { userId: reused.userId, revokedAt: null },
+                            { $set: { revokedAt: new Date(), revokedBy: 'reuse_detected' } }
+                        );
+                    }
+                }
+                res.clearCookie('refreshToken', { path: '/api/auth' });
+                return res.status(401).json({ success: false, message: "Invalid or expired session." });
             }
-
-            res.clearCookie('refreshToken', { path: '/api/auth' });
-            return res.status(401).json({ success: false, message: "Invalid or expired session." });
         }
 
         const user = await User.findById(session.userId);
@@ -362,6 +386,7 @@ Router.post('/refresh', async (req, res) => {
         res.status(500).json({ success: false, message: "Internal server error." });
     }
 });
+
 Router.post('/forgot-password', async (req, res) => {
     try {
         const { email } = req.body
@@ -376,7 +401,7 @@ Router.post('/forgot-password', async (req, res) => {
             return res.status(200).json({ success: true, message: "If this email exists you will recieve a code." })
         }
 
-        createOtpAndSend(user._id, email, "password_reset")
+        await createOtpAndSend(user._id, email, "password_reset", res)
 
         res.status(200).json({ success: true, message: "If this email exists you will recieve a code." })
 

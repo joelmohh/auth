@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const Session = require('../../models/Session');
 const { logError } = require('../logs');
+const fs = require('fs')
 
 function hashToken(token) {
     return crypto.createHash('sha256').update(token).digest('hex');
