@@ -32,7 +32,7 @@ const sessionSchema = new mongoose.Schema({
         enum: ['user', 'system', 'password_change', 'reuse_detected']
     },
     rotatedAt:{
-        type: String
+        type: Date
     },
     createdAt: {
         type: Date,

@@ -10,6 +10,10 @@ mongoose.connect(process.env.MONGO_URI)
 
 const app = express();
 app.use(express.json());
+app.use((req, res, next) => {
+    req.body ??= {}
+    next()
+})
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
 app.use(cookieParser());

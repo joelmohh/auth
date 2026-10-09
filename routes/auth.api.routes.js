@@ -52,7 +52,7 @@ async function createOtpAndSend(userId, email, purpose, res) {
 
     } catch (error) {
         logError(error)
-        res.status(500).json({ success: false, message: "Internal server error" })
+        return res.status(500).json({ success: false, message: "Internal server error." })
     }
 }
 
@@ -173,27 +173,25 @@ Router.post('/resend-otp', async (req, res) => {
 
         const { email, purpose } = req.body;
 
-        if (!email) {
-            return res.status(400).json({ success: false, message: "Email is required." });
+        if (!email || !purpose || purpose === null || !["verify_email", "login", "password_reset"].includes(purpose)) {
+            return res.status(400).json({ success: false, message: "Email and purpose are required. One field is missing or has an invalid value" });
         }
 
-        const user = await User.findOne({ email, purpose });
+        const user = await User.findOne({ email });
 
         if (!user) {
             return res.status(404).json({ success: false, message: "User not found." });
         }
 
-        const otp = await Otp.findOne({ userId: user._id })
+        const otp = await Otp.findOne({ userId: user._id, purpose })
 
         if (otp) {
             if (Date.now() < (Date.parse(otp.lastSentAt) + 60 * 1000)) {
                 return res.status(429).json({ success: false, message: "You have to wait at least 1 minute to request a new code." })
             }
-
-            if (user.emailVerifiedAt && (otp.purpose == 'verify_email' && purpose == 'verify_email')) {
-                return res.status(200).json({ success: true, message: "Email already verified" })
-            }
-
+        }
+        if (user.emailVerifiedAt && purpose == 'verify_email') {
+            return res.status(200).json({ success: true, message: "Email already verified" })
         }
 
         await Otp.deleteMany({ userId: user._id, purpose: purpose });
@@ -320,6 +318,14 @@ Router.post('/logout', async (req, res) => {
     }
 })
 
+// Substitui o Router.post('/refresh', ...) do routes/auth.api.routes.js.
+// Usa o que o arquivo já importa: Session, User, crypto, hashToken, signAccessToken, setRefreshCookie, logError.
+//
+// Pré-requisito: no models/Session.js, `rotatedAt` deve ser `type: Date` (hoje é String).
+// A conta abaixo usa new Date(...) para funcionar nos dois casos, mas Date é o certo.
+
+const GRACE_MS = 10 * 1000;
+
 Router.post('/refresh', async (req, res) => {
     try {
         const raw = req.cookies?.refreshToken;
@@ -331,7 +337,7 @@ Router.post('/refresh', async (req, res) => {
         const oldHash = hashToken(raw);
         const newRaw = crypto.randomBytes(64).toString('hex');
 
-        const session = await Session.findOneAndUpdate(
+       const session = await Session.findOneAndUpdate(
             { refreshToken: oldHash, revokedAt: null, expiresAt: { $gt: new Date() } },
             {
                 $set: {
@@ -341,26 +347,47 @@ Router.post('/refresh', async (req, res) => {
                 }
             },
             { returnDocument: "after" }
-        )
+        );
 
         if (!session) {
-            const reused = await Session.findOne({ lastRefreshToken: oldHash });
-            if (reused) {
-                const GRACE_MS = 10 * 1000;
-                if (((Date.now() - reused.rotatedAt.getTime()) <= GRACE_MS) && reused.revokedAt === null) {
-                    const user = User.findById(reused.userId)
-                    if (user && user.emailVerifiedAt) {
-                        return res.status(200).json({ sucess: true, message: "Session refreshed successfully", data: [signAccessToken(user._id, reused._id)] })
-                    } else {
-                        await Session.updateMany(
-                            { userId: reused.userId, revokedAt: null },
-                            { $set: { revokedAt: new Date(), revokedBy: 'reuse_detected' } }
-                        );
-                    }
+            const reused = await Session.findOne({
+                lastRefreshToken: oldHash,
+                revokedAt: null,
+                expiresAt: { $gt: new Date() }
+            });
+
+            if (!reused) {
+                res.clearCookie('refreshToken', { path: '/api/auth' });
+                return res.status(401).json({ success: false, message: "Session not found" });
+            }
+
+            const withinGrace = (Date.now() - new Date(reused.rotatedAt).getTime()) <= GRACE_MS;
+
+            if (withinGrace) {
+                const user = await User.findById(reused.userId);
+
+                if (user && user.emailVerifiedAt) {
+                    return res.status(200).json({
+                        success: true,
+                        accessToken: signAccessToken(user._id, reused._id)
+                    });
                 }
+
+                reused.revokedBy = 'system';
+                reused.revokedAt = new Date();
+                await reused.save();
+
                 res.clearCookie('refreshToken', { path: '/api/auth' });
                 return res.status(401).json({ success: false, message: "Invalid or expired session." });
             }
+
+            await Session.updateMany(
+                { _id: reused._id },
+                { $set: { revokedAt: new Date(), revokedBy: 'reuse_detected' } }
+            );
+
+            res.clearCookie('refreshToken', { path: '/api/auth' });
+            return res.status(401).json({ success: false, message: "Invalid or expired session." });
         }
 
         const user = await User.findById(session.userId);
@@ -429,7 +456,31 @@ Router.post('/reset-password', async (req, res) => {
             return res.status(404).json({ success: false, message: "User not found." })
         }
 
-        const hashedPassword = await bcrypt.hash(password, 10);
+        const otp = await Otp.findOneAndDelete({
+            userId: user._id,
+            code: code,
+            purpose: 'password_reset'
+        })
+
+        if (!otp) {
+            return res.status(401).json({ success: false, message: "Invalid or missing otp code" })
+        }
+
+        const sessions = await Session.find({ userId: user._id })
+
+        if (sessions && sessions.length > 0) {
+            await Session.updateMany(
+                { userId: user._id },
+                {
+                    $set: {
+                        revokedBy: 'password_change',
+                        revokedAt: Date.now()
+                    }
+                }
+            );
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
 
         user.password = hashedPassword
         await user.save()
