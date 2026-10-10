@@ -47,7 +47,7 @@ Router.get('/:id', verifyToken, async (req, res) => {
     }
 })
 
-Router.post('/', verifyToken, appEditRules, async (req, res) => {
+Router.post('/', verifyToken, async (req, res) => {
     try {
 
         if (!req.user || !req.session) {

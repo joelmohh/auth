@@ -86,12 +86,11 @@ Router.post('/login', async (req, res) => {
         if (!user.emailVerifiedAt) {
             await Otp.deleteMany({ userId: user._id });
             await createOtpAndSend(user._id, email, "verify_email", res);
-
             return res.status(403).json({ success: false, message: "Account not verified. Please verify your account.", verified: false });
         }
 
 
-        const accessToken = await issueSession(user, req, res, 'login');                    // TODO 
+        const accessToken = await issueSession(user, req, res, 'login');                                             // TODO 
         res.status(200).json({ success: true, message: "Login successful.", accessToken: accessToken.accessToken, redirectURL: '/dashboard' });
 
     } catch (error) {
@@ -110,8 +109,8 @@ Router.post('/verify-otp', async (req, res) => {
             redirectURL = '/dashboard'
         }
 
-        if (!email || !otp) {
-            return res.status(400).json({ success: false, message: "Email and OTP are required." });
+        if (!email || !otp || !purpose || purpose === null) {
+            return res.status(400).json({ success: false, message: "Email, OTP and purpose are required." });
         }
 
         const user = await User.findOne({ email });
@@ -318,9 +317,8 @@ Router.post('/logout', async (req, res) => {
     }
 })
 
-const GRACE_MS = 10 * 1000;
-
 Router.post('/refresh', async (req, res) => {
+    const GRACE_MS = 10 * 1000;
     try {
         const raw = req.cookies?.refreshToken;
 
@@ -331,7 +329,7 @@ Router.post('/refresh', async (req, res) => {
         const oldHash = hashToken(raw);
         const newRaw = crypto.randomBytes(64).toString('hex');
 
-       const session = await Session.findOneAndUpdate(
+        const session = await Session.findOneAndUpdate(
             { refreshToken: oldHash, revokedAt: null, expiresAt: { $gt: new Date() } },
             {
                 $set: {

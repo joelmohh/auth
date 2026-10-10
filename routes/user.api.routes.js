@@ -13,7 +13,7 @@ Router.get('/', verifyToken, async (req, res) => {
             return res.status(500).json({ success: false, message: "Something went wrong. Please, try again." })
         }
 
-        const user = await User.findOne({ _id: req.user._id })
+        const user = await User.findOne({ _id: req.user.id })
 
         if (!user) {
             return res.status(404).json({ success: false, message: "Your session is valid, but we couldn't find your user." })
@@ -22,7 +22,7 @@ Router.get('/', verifyToken, async (req, res) => {
         const userData = {
             username: user.username,
             email: user.email,
-            emailVerified: emailVerified ? true : false,
+            emailVerified: user.emailVerifiedAt ? true : false,
             profile: user.profile,
             phone: user.phone,
             adress: user.adress,
@@ -45,14 +45,18 @@ Router.patch('/', verifyToken, async (req, res) => {
 
         if (!req.user) {
             return res.status(500).json({ success: false, message: "Something went wrong. Please, try again." })
+        }   
+
+        if(req.body.password){
+            return res.status(403).json({ success: false, message: "This route can't change password"})
         }
 
         const updatedUser = await User.findOneAndUpdate(
-            { _id: req.user._id },
+            { _id: req.user.id },
             { $set: data },
             {
-                new: true,
-                runValidators: true
+                runValidators: true,
+                returnDocument: 'after'
             })
 
         if (!updatedUser) {
@@ -62,7 +66,7 @@ Router.patch('/', verifyToken, async (req, res) => {
         const userData = {
             username: updatedUser.username,
             email: updatedUser.email,
-            emailVerified: updatedUser ? true : false,
+            emailVerified: updatedUser.emailVerifiedAt ? true : false,
             profile: updatedUser.profile,
             phone: updatedUser.phone,
             adress: updatedUser.adress,
