@@ -29,14 +29,13 @@ async function verifyToken(req, res, next) {
             revokedAt: null,
             expiresAt: { $gt: new Date() }
         });
-
         if (!session) {
             return res.status(403).json({ success: false, message: 'Session not found or revoked.' });
         }
 
         req.user = decoded;
         req.session = session;
-        next();
+        next()
     } catch (error) {
         logError(error);
         return res.status(403).json({ success: false, message: 'Invalid or expired access token.' });

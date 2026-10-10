@@ -2,13 +2,13 @@ const { validationResult, body } = require('express-validator');
 
 const fieldRules = {
   email: body('email').isEmail().notEmpty().withMessage('Invalid or missing email.').normalizeEmail(),
-  username: body('username').notEmpty().trim().withMessage('Invalid or empty username').toLowerCase(),
+  username: body('username').notEmpty().trim().isLength({max: 64, min: 3}).withMessage('Invalid or empty username').toLowerCase(),
 
-  password: body('password').notEmpty().isLength({ min: 8, max: 128 }).withMessage('Invalid password length'),
+  password: body('password').notEmpty().isString().isLength({ min: 8, max: 128 }).withMessage('Invalid password length'),
   newPassword: body('newPassword').notEmpty().isLength({ min: 8, max: 128 }).withMessage('Invalid password length'),
   confirmPassword: body('confirmPassword').notEmpty().isLength({ min: 8, max: 128 }).withMessage('Invalid password length'),
 
-  termsAccepted: body('termsAccepted').isBoolean({ strict: true }).notEmpty().withMessage('Invalid value'),
+  termsAccepted: body('termsAccepted').isBoolean({ loose: true }).notEmpty().withMessage('Invalid value'),
 
   otp: body('otp').isInt().isLength({ min: 6, max: 6 }).notEmpty().withMessage('Invalid or missing field'),
   code: body('code').isInt().isLength({ min: 6, max: 6 }).notEmpty().withMessage('Invalid or missing field'),
@@ -17,9 +17,9 @@ const fieldRules = {
 
   redirectUrl: body('redirectUrl').isURL().notEmpty(), // TODO 
 
-  avatarUrl: body('avatarUrl').isURL().notEmpty(),
-  bannerUrl: body('avatarUrl').isURL().notEmpty(),
-  profilePicture: body('avatarUrl').isURL().notEmpty(),
+  avatarUrl: body('avatarUrl').isURL({require_tld: false}).notEmpty(),
+  bannerUrl: body('bannerUrl').isURL({require_tld:false}).notEmpty(),
+  profilePicture: body('profilePicture').isURL({require_tld: false}).notEmpty(),
 
   bio: body('bio').notEmpty().isLength({ max: 280 }),
 
@@ -45,15 +45,15 @@ async function validationModule (req, res, next){
 
   for (const [field, value] of Object.entries(req.body)) {
     if (fieldRules[field]) {
-      validations.push(field)
+      validations.push(fieldRules[field])
     }
   }
 
   if (validations.length === 0) {
-    next()
+    return next()
   }
 
-  await Promise.All(validations.map(validation => validation.run(req)))
+  await Promise.all(validations.map(validation => validation.run(req)))
 
   const errors = validationResult(req)
   if (!errors.isEmpty()) {
@@ -63,6 +63,5 @@ async function validationModule (req, res, next){
   next()
 
 }
-// TO FIX NEXT COMMIT
 
 module.exports = { validationModule }

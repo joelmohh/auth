@@ -48,7 +48,10 @@ Router.patch('/', verifyToken, async (req, res) => {
         }   
 
         if(req.body.password){
-            return res.status(403).json({ success: false, message: "This route can't change password"})
+            return res.status(403).json({ success: false, message: "This route can't change password."})
+        }
+        if(req.body.email){
+            return res.status(403).json({ success: false, message: "Email edit is not supported."})
         }
 
         const updatedUser = await User.findOneAndUpdate(
@@ -81,23 +84,26 @@ Router.patch('/', verifyToken, async (req, res) => {
     }
 })
 
-Router.delete('/', verifyToken, async (req, res) => {
+Router.delete('/', verifyToken, async (req, res) => {//TO FIX
     try {
-        if(!req.user){
-            return res.status(404).json({success: false, message: "User not found"})
-        }
-
-        const user = await User.findOneAndDelete({_id: req.user._id})
+        
+        const user = User.findById(req.user.id)
 
         if(!user){
-            return res.status(404).json({ success: false, message: "User not found"})
+            return res.status(404).json({ success: true, message: "No user found"})
         }
 
-        res.status(204).end()
+        const deleted = User.findByIdAndDelete(req.user.id)
+
+        if(!deleted){
+            return res.status(500).json({ success: false, message: "Something wen't wrong and we couldn't delete your account, please try again"})
+        }
+
+        res.status(200).json({ success: true, message: "Data erased successfully."})
 
     } catch (error){
         logError(error)
-        res.status(500).json({success: false, message: "Internal server error"})
+        res.send(500).json({success: false, message: "Internal server error"})
     }
 })
 
