@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const Session = require('../../models/Session');
+const User = require('../../models/User');
 const { logError } = require('../logs');
 const fs = require('fs')
 
@@ -37,6 +38,14 @@ async function verifyToken(req, res, next) {
         req.session = session;
         next()
     } catch (error) {
+
+        if (error.name === 'TokenExpiredError') {
+            return res.status(401).json({
+                success: false,
+                message: "Your session has expired. Please request new credentials."
+            });
+        }
+
         logError(error);
         return res.status(403).json({ success: false, message: 'Invalid or expired access token.' });
     }
@@ -69,7 +78,7 @@ function signAccessToken(userId, sessionId) {
     return jwt.sign({ id: userId, sessionId }, process.env.JWT_SECRET, { expiresIn: "1h" });
 }
 
-function setRefreshCookie(res, refreshToken){
+function setRefreshCookie(res, refreshToken) {
     res.cookie('refreshToken', refreshToken, {
         httpOnly: true,
         secure: true,
@@ -79,7 +88,7 @@ function setRefreshCookie(res, refreshToken){
     })
 }
 
-async function issueSession(user, req, res, type){
+async function issueSession(user, req, res, type) {
     const refreshToken = crypto.randomBytes(64).toString('hex')
 
     const session = await Session.create({

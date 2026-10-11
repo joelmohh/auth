@@ -45,13 +45,13 @@ Router.patch('/', verifyToken, async (req, res) => {
 
         if (!req.user) {
             return res.status(500).json({ success: false, message: "Something went wrong. Please, try again." })
-        }   
-
-        if(req.body.password){
-            return res.status(403).json({ success: false, message: "This route can't change password."})
         }
-        if(req.body.email){
-            return res.status(403).json({ success: false, message: "Email edit is not supported."})
+
+        if (req.body.password) {
+            return res.status(403).json({ success: false, message: "This route can't change password." })
+        }
+        if (req.body.email) {
+            return res.status(403).json({ success: false, message: "Email edit is not supported." })
         }
 
         const updatedUser = await User.findOneAndUpdate(
@@ -65,6 +65,9 @@ Router.patch('/', verifyToken, async (req, res) => {
         if (!updatedUser) {
             return res.status(404).json({ success: false, message: "User not found." })
         }
+        if (user.status !== 'active') {
+            return res.status(403).json({ success: false, message: "Authorization error, account not active" })
+        }
 
         const userData = {
             username: updatedUser.username,
@@ -77,88 +80,128 @@ Router.patch('/', verifyToken, async (req, res) => {
             accountStatus: updatedUser.status
         }
 
-        res.status(200).json({ success: false, message: "User data updated successfully", data: userData})
+        res.status(200).json({ success: false, message: "User data updated successfully", data: userData })
     } catch (error) {
         logError(error)
         res.status(500).json({ success: false, message: "Internal server error" })
     }
 })
 
-Router.delete('/', verifyToken, async (req, res) => {//TO FIX
+Router.delete('/', verifyToken, async (req, res) => {
     try {
-        
-        const user = User.findById(req.user.id)
 
-        if(!user){
-            return res.status(404).json({ success: true, message: "No user found"})
+        if (!req.user.id) {
+            return res.status(400).json({ success: false, message: "Missing required fields" })
         }
 
-        const deleted = User.findByIdAndDelete(req.user.id)
+        const user = await User.findByIdAndUpdate(req.user.id, {
+            status: 'deleted',
+            deletedAt: Date.now()
+        },
+            {
+                returnDocument: "after"
+            })
 
-        if(!deleted){
-            return res.status(500).json({ success: false, message: "Something wen't wrong and we couldn't delete your account, please try again"})
+        if (!user) {
+            return res.status(404).json({ success: false, message: "No user found" })
         }
 
-        res.status(200).json({ success: true, message: "Data erased successfully."})
+        if (user.status !== 'active') {
+            return res.status(403).json({ success: false, message: "Authorization error, account not active" })
+        }
 
-    } catch (error){
+        const sessions = await Session.updateMany({
+            userId: req.user.id
+        },
+            {
+                revokedAt: Date.now(),
+                revokedBy: 'system'
+            })
+
+        res.status(200).json({ success: true, message: "Account scheduled to deletation successfully." })
+
+    } catch (error) {
         logError(error)
-        res.send(500).json({success: false, message: "Internal server error"})
+        res.send(500).json({ success: false, message: "Internal server error" })
     }
 })
 
 Router.get('/sessions', verifyToken, async (req, res) => {
     try {
 
-        if(!req.user){
-            return res.status(404).json({ success: false, message: "User not found"})
+        if (!req.user) {
+           return res.status(404).json({ success: false, message: "User not found" })
+        }
+        const user = await User.findById(req.user.id)
+
+        if (!user) {
+            return res.status(404).json({ sucess: false, message: "User not found" })
+        }
+        if (user.status !== 'active') {
+            return res.status(403).json({ success: false, message: "Authorization error, account not active" })
         }
 
-        const user = await User.findById(req.user._id)
+        const sessions = await Session.find({ userId: user._id, revokedAt: null })
 
-        if(!user){
-            return res.status(404).json({ sucess: false, message: "User not found"})
+        if (!sessions) {
+            return res.status(404).json({ sucess: false, message: "No active sessions found" })
         }
 
-        const sessions = await Session.find({userId: user._id, revokedAt: null})
-
-        if(!sessions){
-            return res.status(404).json({ sucess: false, message: "No active sessions found"})
-        }
-                                                                                            // TRATAR SECAO
-        res.status(200).json({ success: true, message: "Sessions fetched successfully", data: sessions})
+        res.status(200).json({ success: true, message: "Sessions fetched successfully", data: sessions })
 
     } catch (error) {
         logError(error)
-        res.status(500).json({ sucess: false, message: "Internal server error"})
+        res.status(500).json({ sucess: false, message: "Internal server error" })
     }
 })
 
 Router.get('/sessions/:id', verifyToken, async (req, res) => {
-        try {
+    try {
 
-        if(!req.user){
-            return res.status(404).json({ success: false, message: "User not found"})
+        if (!req.user) {
+            return res.status(404).json({ success: false, message: "User not found" })
         }
 
-        const user = await User.findById(req.user._id)
+        const user = await User.findById(req.user.id)
 
-        if(!user){
-            return res.status(404).json({ sucess: false, message: "User not found"})
+        if (!user) {
+            return res.status(404).json({ sucess: false, message: "User not found" })
         }
 
-        const sessions = await Session.find({_id: req.params.id, userId: req.user._id})
+        const sessions = await Session.find({ _id: req.params.id, userId: req.user.id })
 
-        if(!sessions){
-            return res.status(404).json({ sucess: false, message: "No active found"})
+        if (!sessions) {
+            return res.status(404).json({ sucess: false, message: "No active found" })
         }
-                                                                                            // TRATAR SECAO
-        res.status(200).json({ success: true, message: "Sessions fetched successfully", data: sessions})
+
+        res.status(200).json({ success: true, message: "Sessions fetched successfully", data: sessions })
 
     } catch (error) {
         logError(error)
-        res.status(500).json({ sucess: false, message: "Internal server error"})
+        res.status(500).json({ sucess: false, message: "Internal server error" })
     }
 })
+
+/*
+TO COMPLETE
+Routes.get('/connections', verifyToken, async (req, res) => {
+    try {
+        if(!req.user){
+            return res.status(401).json({success: false, message: "Unauthorized"})
+        }
+
+        const user = await User.findById(req.user.id)
+
+        if(!user){
+            return res.status(404).json({success: false, message: "User not found"})
+        }
+
+
+
+    } catch (error) {
+        logError(error)
+        res.status(500).json({success: false, message: "Internal server error"})
+    }
+})*/
 
 module.exports = Router

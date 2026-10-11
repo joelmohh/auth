@@ -78,6 +78,10 @@ Router.post('/login', async (req, res) => {
             return res.status(401).json({ success: false, message: "User not found or invalid credentials." });
         }
 
+        if (user.status !== 'active') {
+            return res.status(403).json({ success: false, message: "Authorization error, account not active" })
+        }
+
         const isPasswordValid = await bcrypt.compare(password, user.password);
 
         if (!isPasswordValid) {
@@ -117,6 +121,9 @@ Router.post('/verify-otp', async (req, res) => {
 
         if (!user) {
             return res.status(404).json({ success: false, message: "OTP expired or not found. Please request a new one." });
+        }
+        if (user.status !== 'active') {
+            return res.status(403).json({ success: false, message: "Authorization error, account not active" })
         }
 
         const existingOtp = await Otp.findOneAndUpdate(
@@ -181,6 +188,9 @@ Router.post('/resend-otp', async (req, res) => {
         if (!user) {
             return res.status(404).json({ success: false, message: "User not found." });
         }
+        if (user.status !== 'active') {
+            return res.status(403).json({ success: false, message: "Authorization error, account not active" })
+        }
 
         const otp = await Otp.findOne({ userId: user._id, purpose })
 
@@ -204,40 +214,7 @@ Router.post('/resend-otp', async (req, res) => {
     }
 })
 
-const signupRules = [
-    // Mandatory
-    validator.body("username").trim().notEmpty().isLength({ min: 3, max: 32 }),
-    validator.body("email").trim().isEmail().normalizeEmail(),
-    validator.body("password").isLength({ min: 8, max: 128 }),
-    validator.body("termsAccepted")
-        .isBoolean().toBoolean()
-        .custom(v => v === true).withMessage("Terms must be accepted."),
-
-    // Profile
-    validator.body("displayName").optional().trim().isLength({ max: 64 }),
-    validator.body("avatarUrl").optional().trim().isURL({ protocols: ["http", "https"] }),
-    validator.body("bannerUrl").optional().trim().isURL({ protocols: ["http", "https"] }),
-    validator.body("bio").optional().trim().isLength({ max: 500 }),
-    validator.body("locale").optional().trim().isLocale(),
-
-    // Misc
-    validator.body("phone").optional().trim().isMobilePhone("any"),
-    validator.body("birthDate").optional().isISO8601().toDate(),
-
-    // Address
-    validator.body("address").optional().isObject(),
-    validator.body("address.country").if(validator.body("address").exists())
-        .trim().toUpperCase().isISO31661Alpha2(),
-    validator.body("address.city").if(validator.body("address").exists())
-        .trim().notEmpty().isLength({ max: 100 }),
-    validator.body("address.street").optional().trim().isLength({ max: 150 }),
-    validator.body("address.number").optional().trim().isLength({ max: 20 }),
-    validator.body("address.complement").optional().trim().isLength({ max: 100 }),
-    validator.body("address.state").optional().trim().isLength({ max: 100 }),
-    validator.body("address.zip").optional().trim().isPostalCode("any"),
-]
-
-Router.post("/signup", signupRules, async (req, res) => {
+Router.post("/signup", async (req, res) => {
 
     const errors = validator.validationResult(req)
 
@@ -393,6 +370,10 @@ Router.post('/refresh', async (req, res) => {
             return res.status(401).json({ success: false, message: "Invalid or expired session." });
         }
 
+        if (user.status !== 'active') {
+            return res.status(403).json({ success: false, message: "Authorization error, account not active" })
+        }
+
         setRefreshCookie(res, newRaw);
 
         res.status(200).json({
@@ -418,6 +399,9 @@ Router.post('/forgot-password', async (req, res) => {
 
         if (!user) {
             return res.status(200).json({ success: true, message: "If this email exists you will recieve a code." })
+        }
+        if (user.status !== 'active') {
+            return res.status(403).json({ success: false, message: "Authorization error, account not active" })
         }
 
         await createOtpAndSend(user._id, email, "password_reset", res)
@@ -446,6 +430,9 @@ Router.post('/reset-password', async (req, res) => {
 
         if (!user) {
             return res.status(404).json({ success: false, message: "User not found." })
+        }
+        if (user.status !== 'active') {
+            return res.status(403).json({ success: false, message: "Authorization error, account not active" })
         }
 
         const otp = await Otp.findOneAndDelete({
