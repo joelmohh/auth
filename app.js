@@ -26,6 +26,10 @@ app.use('/', generalLimiter, require('./routes/static.routes'));
 app.use('/api/apps', apiLimiter, validationModule,require('./routes/apps.api.routes'));
 app.use('/api/me', apiLimiter, validationModule, require('./routes/user.api.routes'));
 
+app.get('/teapot', (req, res) => {
+    res.status(418).json({success: true, message:"I am a healthy teapot"})
+})
+
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });

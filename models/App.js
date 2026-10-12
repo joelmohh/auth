@@ -25,12 +25,18 @@ const appSchema = new mongoose.Schema({
         type: String,
         required: true,
         unique: true,
-        selected: false
+        select: false
+    },
+    clientSecretLastRotation:{
+        type: Date,
+        default: Date.now()
     },
     redirectUrls: [{type: String}],
     scopes: [{type: String}],
     providers: [{
         provider: {
+            _id: false,
+            enum: ['x','apple','google','microsoft','discord','github'],
             type: String,
             required: false
         },

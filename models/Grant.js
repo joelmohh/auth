@@ -3,12 +3,12 @@ const GrantSchema = new mongoose.Schema({
     userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: True
+        required: true
     },
     appId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: True
+        ref: 'App',
+        required: true
     },
     scopes:[{type:String}],
     lastUsedAt: Date,

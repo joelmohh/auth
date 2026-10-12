@@ -1,6 +1,6 @@
 const { validationResult, body } = require('express-validator');
 
-const ALLOWED_SCOPES = ['username', 'email', 'profile', 'phone', 'adress', 'birthDate']
+const ALLOWED_SCOPES = ['username', 'email', 'profile', 'phone', 'address', 'birthDate']
 const ALLOWED_PROVIDERS = []
 
 
