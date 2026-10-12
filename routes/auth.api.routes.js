@@ -223,7 +223,7 @@ Router.post("/signup", async (req, res) => {
     }
 
     try {
-        const { password, termsAccepted, ...rest } = validator.matchedData(req, { location: ["body"] })
+        const { password, termsAccepted, ...rest } = validator.matchedData(req, { locations: ["body"] })
 
         const user = await User.findOne({ $or: [{ username: rest.username }, { email: rest.email }] })
 

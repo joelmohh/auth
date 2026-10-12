@@ -15,7 +15,7 @@ const AuthCodeSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
-    redirectUri: {
+    redirectUrl: {
         type: String,
         required: true
     },

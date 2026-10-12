@@ -27,7 +27,7 @@ const appSchema = new mongoose.Schema({
         unique: true,
         selected: false
     },
-    redirectUris: [{type: String}],
+    redirectUrls: [{type: String}],
     scopes: [{type: String}],
     providers: [{
         provider: {

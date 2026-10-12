@@ -5,7 +5,8 @@ const { verifyToken } = require('../modules/auth/session');
 const App = require('../models/App');
 const User = require('../models/User');
 const { logError } = require('../modules/logs');
-const { encrypt, decrypt } = require('../modules/crypto')
+const { encrypt, decrypt } = require('../modules/crypto');
+const { default: mongoose } = require('mongoose');
 
 Router.get('/', verifyToken, async (req, res) => {
     try {
@@ -20,7 +21,7 @@ Router.get('/', verifyToken, async (req, res) => {
             return res.status(404).json({ success: false, message: "User not found" })
         }
 
-        const apps = await App.find({ ownerId: user._id }).select('ownerId name description clientId redirectUris scopes providers.provider provider.enabled theme status')
+        const apps = await App.find({ ownerId: user._id }).select('ownerId name description clientId redirectUrls scopes providers.provider provider.enabled theme status')
 
         if (!apps) {
             return res.status(404).json({ success: true, message: "No apps found", data: [] })
@@ -47,7 +48,7 @@ Router.post('/', verifyToken, async (req, res) => {
             return res.status(404).json({ success: false, message: "User not found." })
         }
 
-        const { name, description, redirectUris, scopes, providers, theme } = req.body
+        const { name, description, redirectUrls, scopes, } = req.body
 
         if (!name) {
             return res.status(403).json({ success: false, message: "Missing required field (name)." })
@@ -56,22 +57,92 @@ Router.post('/', verifyToken, async (req, res) => {
         const clientId = crypto.randomBytes(16).toString('hex')
         const clientSecret = encrypt(crypto.randomBytes(64).toString('hex'))
 
-        const treatedRedirectUris = []
+        const treatedredirectUrls = []
 
-        redirectUris.forEach((uri) => {
+        const app = await App.create({
+            ownerId: user._id,
+            name: name,
+            description: description || '',
+            clientId,
+            clientSecret,
+            redirectUrls: treatedredirectUrls,
+            scopes,
+            providers: []
+        })
+
+        if (!app) {
+            return res.status(418).json({ success: false, message: "Something went wrong." })
+        }
+
+        app.clientSecret = decrypt(clientSecret)
+
+        res.status(200).json({ success: true, message: "App created successfully", data: app })
+
+    } catch (error) {
+        logError(error)
+        res.status(500).json({ success: false, message: "Internal server error." })
+    }
+})
+
+Router.get('/:id', verifyToken, async (req, res) => {
+    try {
+
+        if (!req.user) {
+            return res.status(401).json({ success: false, message: "Unauthorized" })
+        }
+
+        const app = await App.findById(req.params.id)
+
+        if (!app) {
+            return res.status(404).json({ success: false, message: "No apps found", data: [] })
+        }
+
+        res.status(200).json({ success: true, message: "Data fetched successfully", data: app })
+
+    } catch (error) {
+        logError(error)
+        res.status(500).json({ success: false, message: "Internal server errror." })
+    }
+})
+
+Router.patch('/:id', verifyToken, async (req, res) => {
+    try {
+
+        if (!req.user) {
+            return res.status(401).json({ success: false, message: "Unauthorized" })
+        }
+
+        const user = await User.findById(req.user.id)
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found." })
+        }
+
+        const { name, description, redirectUrls, scopes, providers, theme } = req.body
+
+        if (!name) {
+            return res.status(403).json({ success: false, message: "Missing required field (name)." })
+        }
+
+        const clientId = crypto.randomBytes(16).toString('hex')
+        const clientSecret = encrypt(crypto.randomBytes(64).toString('hex'))
+
+        const treatedredirectUrls = []
+
+        redirectUrls.forEach((url) => {
             try {
 
-                const cleanUri = uri.trim()
+                const cleanUrl = url.trim()
 
-                const hasProtocol = /^https?:\/\//i.test(cleanUri);
-                const urlToParse = hasProtocol ? cleanUri : `http://${cleanUri}`;
+                const hasProtocol = /^https?:\/\//i.test(cleanUrl);
+                const urlToParse = hasProtocol ? cleanUrl : `http://${cleanUrl}`;
 
                 const url = new URL(urlToParse);
 
                 const isValidHost = url.hostname === 'localhost' || url.hostname.includes('.');
 
                 if (isValidHost) {
-                    treatedRedirectUris.push(cleanUri);
+                    treatedredirectUrls.push(cleanUrl);
                 }
 
             } catch {
@@ -92,7 +163,7 @@ Router.post('/', verifyToken, async (req, res) => {
             description: description || '',
             clientId,
             clientSecret,
-            redirectUris: treatedRedirectUris,
+            redirectUrls: treatedredirectUrls,
             scopes,
             providers: []
         })
@@ -100,6 +171,8 @@ Router.post('/', verifyToken, async (req, res) => {
         if (!app) {
             return res.status(418).json({ success: false, message: "Something went wrong." })
         }
+
+        app.clientSecret = decrypt(clientSecret)
 
         res.status(200).json({ success: true, message: "App created successfully", data: app })
 
@@ -109,33 +182,28 @@ Router.post('/', verifyToken, async (req, res) => {
     }
 })
 
-Router.get('/:id', verifyToken, async (req, res) => {
+Router.delete('/:id', verifyToken, async (req, res) => {
     try {
 
-        if(!req.user){
-            return res.status(401).json({success: false, message: "Unauthorized"})
+        if (!req.user) {
+            return res.status(401).json({ success: false, message: "Unauthorized" })
         }
 
-        const app = await App.findById(req.params.id)
-
-        if(!app){
-            return res.status(404).json({ success: false, message: "No apps found", data: []})
+        if (!mongoose.isValidObjectId(req.params.id)) {
+            return res.status(403).json({ success: false, message: "Invalid app id provided." })
         }
 
-        res.status(200).json({ success: true, message: "Data fetched successfully", data: app})
+        const app = await App.findOneAndDelete({ ownerId: req.user.id, _id: req.params.id })
+
+        if (!app) {
+            return res.status(404).json({ success: false, message: "No app found", data: [] })
+        }
+
+        res.status(200).json({ success: true, message: "App deleted successfully", data: app })
 
     } catch (error) {
         logError(error)
-        res.status(500).json({ success: false, message: "Internal server errror."})
-    }
-})
-
-Router.patch('/:id', verifyToken, async (req, res) => {
-    try {
-        // TO CONTINUE NEXT COMMIT
-    } catch(error){
-        logError(error)
-        res.status(500).json({ success: false, message: "Internal server error."})
+        res.status(500).json({ success: false, message: "Internal server error." })
     }
 })
 module.exports = Router;

@@ -13,7 +13,7 @@ function decrypt(value) {
     const parts = value.split(':')
     const iv = Buffer.from(parts.shift(), 'hex')
     const encryptedData = parts.join(':')
-    const decipher = crypto.createDecipheriv(algorithm, Buffer.from(process.env.CLIENT_SECRET_HASH), iv)
+    const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(process.env.CLIENT_SECRET_HASH), iv)
     let decrypted = decipher.update(encryptedData, 'hex', 'utf8')
     decrypted += decipher.final('utf8')
     return decrypted
