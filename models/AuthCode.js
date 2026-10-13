@@ -6,12 +6,12 @@ const AuthCodeSchema = new mongoose.Schema({
         unique: true
     },
     appId: {
-        type: mongoose.SchemaType.ObjectId,
+        type: mongoose.Schema.Types.ObjectId,
         ref: 'App',
         required: true
     },
     userId: {
-        type: mongoose.SchemaType.ObjectId,
+        type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },

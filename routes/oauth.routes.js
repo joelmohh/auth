@@ -12,7 +12,7 @@ const { logError } = require('../modules/logs')
 const { verifyToken } = require('../modules/auth/session')
 const { default: mongoose } = require('mongoose')
 const { encrypt, decrypt } = require(`../modules/crypto`)
-const { issueSession } = require('../modules/session')
+const { issueSession } = require('../modules/auth/session')
 
 Router.get('/authorize', async (req, res) => {
     try {
@@ -122,7 +122,7 @@ Router.post('/token', async (req, res) => {
     }
 })
 
-App.post('/revoke', async (req, res) => {
+Router.post('/revoke', async (req, res) => {
     try {
         let token = req.cookies['refreshToken'];
         if (!token) {

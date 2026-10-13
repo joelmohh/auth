@@ -235,7 +235,7 @@ Router.put('/:id/scopes', verifyToken, async (req, res) => {
     }
 })
 
-Routes.patch('/:id/appearance', verifyToken, async (req, res) => {
+Router.patch('/:id/appearance', verifyToken, async (req, res) => {
     try {
 
         if (!req.params.id || !mongoose.isValidObjectId(req.params.id)) {
@@ -388,7 +388,7 @@ const SCOPE_FIELDS = {
     birthDate: ['birthDate']
 }
 
-const FIELDS = Object.values(SCOPE_FIELDS).flat.join(' ')
+const FIELDS = Object.values(SCOPE_FIELDS).flat().join(' ')
 
 function pickByScopes(user, scopes) {
     const out = { id: user._id }

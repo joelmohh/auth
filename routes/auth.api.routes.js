@@ -472,8 +472,6 @@ Router.post('/reset-password', async (req, res) => {
     }
 })
 
-// OAuth Routes
-
 Router.get('/:provider', async (req, res) => {
     try {
         let provider = req.params.provider
