@@ -15,16 +15,8 @@ const AuthCodeSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
-    redirectUrl: {
-        type: String,
-        required: true
-    },
     scopes: [String],
     codeChallenge: String,
-    codeChallengeMethod: {
-        type: String,
-        enum: ['S256']
-    },
     usedAt: Date,
     expiresAt: {
         type: Date,

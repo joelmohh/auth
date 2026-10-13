@@ -31,6 +31,15 @@ const sessionSchema = new mongoose.Schema({
         type: String,
         enum: ['user', 'system', 'password_change', 'reuse_detected']
     },
+    type: {
+        type: String,
+        enum: ['default', 'out']
+    },
+    appId:{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
     rotatedAt:{
         type: Date
     },

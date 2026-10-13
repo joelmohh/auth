@@ -98,7 +98,7 @@ function setRefreshCookie(res, refreshToken) {
     })
 }
 
-async function issueSession(user, req, res, type) {
+async function issueSession(user, req, res, type = 'default', appId = null) {
     const refreshToken = crypto.randomBytes(64).toString('hex')
 
     const session = await Session.create({
@@ -106,7 +106,8 @@ async function issueSession(user, req, res, type) {
         refreshToken: hashToken(refreshToken),
         userAgent: req.headers['user-agent'] || '',
         ip: req.headers['cf-connectiong-ip'] || req.ip || 'unknown',
-        type
+        type,
+        appId
     })
     setRefreshCookie(res, refreshToken)
     return { accessToken: signAccessToken(user._id, session.id), refreshToken: refreshToken }

@@ -21,8 +21,9 @@ app.use(cookieParser());
 
 const PORT = process.env.PORT || 3000;
 
-app.use('/api/auth', apiLimiter, validationModule,require('./routes/auth.api.routes'));
 app.use('/', generalLimiter, require('./routes/static.routes'));
+app.use('/oauth', apiLimiter, validationModule,require('./routes/oauth.routes'));
+app.use('/api/auth', apiLimiter, validationModule,require('./routes/auth.api.routes'));
 app.use('/api/apps', apiLimiter, validationModule,require('./routes/apps.api.routes'));
 app.use('/api/me', apiLimiter, validationModule, require('./routes/user.api.routes'));
 
