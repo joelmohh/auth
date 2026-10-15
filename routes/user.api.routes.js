@@ -41,7 +41,9 @@ Router.get('/', verifyToken, async (req, res) => {
 Router.patch('/', verifyToken, async (req, res) => {
     try {
 
-        const data = req.body
+        const {deletedAt, lastLoginAt, termsVersion, termsAcceptedAt, status, ...rest } = req.body
+
+        console.log(rest)
 
         if (!req.user) {
             return res.status(500).json({ success: false, message: "Something went wrong. Please, try again." })
@@ -56,7 +58,7 @@ Router.patch('/', verifyToken, async (req, res) => {
 
         const updatedUser = await User.findOneAndUpdate(
             { _id: req.user.id },
-            { $set: data },
+            { $set: rest },
             {
                 runValidators: true,
                 returnDocument: 'after'
@@ -65,9 +67,11 @@ Router.patch('/', verifyToken, async (req, res) => {
         if (!updatedUser) {
             return res.status(404).json({ success: false, message: "User not found." })
         }
-        if (user.status !== 'active') {
+        if (updatedUser.status !== 'active') {
             return res.status(403).json({ success: false, message: "Authorization error, account not active" })
         }
+
+        console.log(updatedUser)
 
         const userData = {
             username: updatedUser.username,
@@ -80,7 +84,7 @@ Router.patch('/', verifyToken, async (req, res) => {
             accountStatus: updatedUser.status
         }
 
-        res.status(200).json({ success: false, message: "User data updated successfully", data: userData })
+        res.status(200).json({ success: true, message: "User data updated successfully", data: userData })
     } catch (error) {
         logError(error)
         res.status(500).json({ success: false, message: "Internal server error" })

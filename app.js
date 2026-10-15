@@ -18,6 +18,10 @@ app.use((req, res, next) => {
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
 app.use(cookieParser());
+app.use((req, res, next) => {
+  res.setHeader('X-Powered-By', 'PHP/8.3.0');
+  next();
+});
 
 const PORT = process.env.PORT || 3000;
 

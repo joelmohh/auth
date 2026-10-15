@@ -109,6 +109,8 @@ async function issueSession(user, req, res, type = 'default', appId = null) {
         type,
         appId
     })
+    await User.findOneAndUpdate({_id: user._id}, {lastLoginAt: Date.now()})
+
     setRefreshCookie(res, refreshToken)
     return { accessToken: signAccessToken(user._id, session.id), refreshToken: refreshToken }
 }

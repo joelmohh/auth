@@ -6,7 +6,7 @@ const ALLOWED_PROVIDERS = []
 
 const fieldRules = {
   email: body('email').isEmail().notEmpty().withMessage('Invalid or missing email.').normalizeEmail().isString(),
-  username: body('username').notEmpty().isString().trim().isLength({ max: 64, min: 3 }).withMessage('Invalid or empty username').toLowerCase(),
+  username: body('username').notEmpty().isString().trim().isLength({ max: 32, min: 3 }).withMessage('Invalid or empty username').toLowerCase(),
 
   password: body('password').notEmpty().isString().isLength({ min: 8, max: 128 }).withMessage('Invalid password length'),
   newPassword: body('newPassword').notEmpty().isLength({ min: 8, max: 128 }).withMessage('Invalid password length'),
@@ -64,7 +64,14 @@ const fieldRules = {
 
   name: body('name').isString().trim().isLength({ min: 1, max: 64 }).withMessage('Invalid name'),
   description: body('description').optional({ values: 'falsy' }).isString().isLength({ max: 500 }),
-  redirectUris: body('redirectUris').isArray({ max: 20 }).withMessage('Invalid redirectUris'),
+  redirectUris: body('redirectUris').isArray({ max: 20 }).withMessage('Invalid redirectUris').customSanitizer((value) => {
+      if (!value) return value;
+      const lowerVal = value.trim().toLowerCase();
+      if (lowerVal.startsWith('javascript:') || lowerVal.startsWith('data:')) {
+        return ''; 
+      }
+      return value.trim();
+    }),
   'redirectUris.*': body('redirectUris.*').isString().trim().isURL({ require_tld: false, require_protocol: true, protocols: ['http', 'https'] }).withMessage('Invalid redirect URI'),
   scopes: body('scopes').isArray({ max: ALLOWED_SCOPES.length }).withMessage('Invalid scopes'),
   'scopes.*': body('scopes.*').isString().isIn(ALLOWED_SCOPES).withMessage('Invalid scope'),

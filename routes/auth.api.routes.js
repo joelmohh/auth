@@ -108,9 +108,10 @@ Router.post('/verify-otp', async (req, res) => {
     try {
         const { email, otp, purpose } = req.body;
 
+        //verify later
         let redirectURL = req.body.redirectURL
-        if (!req.body.redirectURL) {
-            redirectURL = '/dashboard'
+        if (req.body.redirectURL !== 0) {
+            redirectURL = APP_DEFAULT_PATH
         }
 
         if (!email || !otp || !purpose || purpose === null) {
@@ -164,7 +165,7 @@ Router.post('/verify-otp', async (req, res) => {
 
         const tokens = await issueSession(user, req, res, 'register');
 
-        let finalUrl = `${redirectURL}/?code=${tokens.refreshToken}`
+        let finalUrl = `${redirectURL}`
 
         res.status(200).json({ success: true, message: "OTP verified successfully.", accessToken: tokens.accessToken, redirectURL: finalUrl || '/dashboard' });
 
@@ -215,15 +216,15 @@ Router.post('/resend-otp', async (req, res) => {
 })
 
 Router.post("/signup", async (req, res) => {
-
-    const errors = validator.validationResult(req)
-
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ success: false, message: "One or more fields are invalid or missing.", errors: errors.array() })
-    }
-
     try {
-        const { password, termsAccepted, ...rest } = validator.matchedData(req, { locations: ["body"] })
+        const { password, termsAccepted, emailVerifiedAt, ...rest } = req.body
+        if(!password || !rest.email || !rest.username){
+            return res.status(400).json({ success: false, message: "Missing required fields."})
+        }
+
+        if(!termsAccepted){
+            return res.status(401).json({ success: false, message: "You have to accept the terms and conditions"})
+        }
 
         const user = await User.findOne({ $or: [{ username: rest.username }, { email: rest.email }] })
 
@@ -433,6 +434,20 @@ Router.post('/reset-password', async (req, res) => {
         }
         if (user.status !== 'active') {
             return res.status(403).json({ success: false, message: "Authorization error, account not active" })
+        }
+        const findOtp = await Otp.findOneAndUpdate({
+            userId: user._id,
+            purpose: 'password_reset'
+        },{ $inc: { tries: 1 } })
+
+        if(!findOtp){
+            return res.status(404).json({success: false, message: "Invalid otp"})
+        }
+        if(findOtp.expiresAt < Date.now()){
+            return res.status(401).json({success: true, message: "Expired otp, request a new one."})
+        }
+        if(findOtp.tries > findOtp.maxTries){
+            return res.status(401).json({ success: false, message: "You have reached the maximun attempt"})
         }
 
         const otp = await Otp.findOneAndDelete({

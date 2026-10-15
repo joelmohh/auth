@@ -33,7 +33,7 @@ const sessionSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ['default', 'out']
+        enum: ['default', 'out', 'register', 'login']
     },
     appId:{
         type: mongoose.Schema.Types.ObjectId,
