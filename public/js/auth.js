@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', function () {
     const redirectURL = new URLSearchParams(window.location.search).get('redirectURL') || '/dashboard';
-    const appId = new URLSearchParams(window.location.search).get('appId') || null;
+    const client_id = new URLSearchParams(window.location.search).get('client_id') || null;
 
     // toggle password visibility
     document.querySelectorAll('.input-icon-btn').forEach((btn) => {
@@ -104,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const response = await fetch('/api/auth/verify-otp', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, otp, appId, redirectURL })
+                    body: JSON.stringify({ email, otp, appId: client_id, redirectURL })
                 });
                 const data = await response.json();
 
@@ -175,8 +175,8 @@ document.addEventListener('DOMContentLoaded', function () {
         [email, password].forEach((input) => {
             input.addEventListener('input', () => {
                 input.classList.remove('invalid');
-                input.setAttribute('aria-invalid', 'false');
-                errorMessages[input.id].textContent = '';
+                input.setAttribute('aria-invalid', 'false')
+                errorMessages[input.id].textContent = ''
             });
         });
     }
@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const response = await fetch('/api/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: email.value, password: password.value, remember, appId, redirectURL })
+                    body: JSON.stringify({ email: email.value, password: password.value, remember, appId: client_id, redirectURL })
                 });
 
                 const data = await response.json();
@@ -333,7 +333,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        appId: appId || null,
+                        appId: client_id || null,
                         redirectURL: redirectURL || null,
                         username: username.value.trim(),
                         email: signupEmail.value.trim(),

@@ -36,11 +36,11 @@ async function verifyToken(req, res, next) {
 
         const user = await User.findById(decoded.id)
 
-        if(!user){
-            return res.status(404).json({ success: false, message: "Invalid user"})
+        if (!user) {
+            return res.status(404).json({ success: false, message: "Invalid user" })
         }
 
-        if(user.status !== 'active'){
+        if (user.status !== 'active') {
             return res.status(401).json({ success: false, message: "Unactive account" })
         }
 
@@ -90,10 +90,10 @@ function signAccessToken(userId, sessionId) {
 
 function setRefreshCookie(res, refreshToken) {
     res.cookie('refreshToken', refreshToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'Strict',
-        path: '/api/auth',
+        /* httpOnly: false,
+         secure: true,
+         sameSite: 'Strict',
+         path: '/api/auth', */
         maxAge: 7 * 24 * 60 * 60 * 1000
     })
 }
@@ -109,10 +109,32 @@ async function issueSession(user, req, res, type = 'default', appId = null) {
         type,
         appId
     })
-    await User.findOneAndUpdate({_id: user._id}, {lastLoginAt: Date.now()})
+    await User.findOneAndUpdate({ _id: user._id }, { lastLoginAt: Date.now() })
 
     setRefreshCookie(res, refreshToken)
     return { accessToken: signAccessToken(user._id, session.id), refreshToken: refreshToken }
 }
 
-module.exports = { hashToken, verifyToken, verifyRefreshToken, issueSession, setRefreshCookie, signAccessToken };
+async function notLoggedIn(req, res, next) {
+    if (req.cookies.refreshToken) {
+
+        const session = await Session.exists({ refreshToken: hashToken(req.cookies.refreshToken) })
+
+        if (session) {
+            return res.redirect('/dashboard')
+        }
+        next()
+    } else {
+        next()
+    }
+}
+async function loggedIn(req, res, next) {
+    if (!req.cookies.refreshToken) {
+        console.log('A')
+        next('/')
+    } else {
+        next()
+    }
+}
+
+module.exports = { hashToken, verifyToken, notLoggedIn, loggedIn, verifyRefreshToken, issueSession, setRefreshCookie, signAccessToken };

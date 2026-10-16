@@ -106,15 +106,10 @@ Router.post('/login', async (req, res) => {
 
 Router.post('/verify-otp', async (req, res) => {
     try {
-        const { email, otp, purpose } = req.body;
+        const { email, otp, purpose, client_id, redirectURL } = req.body;
 
-        //verify later
-        let redirectURL = req.body.redirectURL
-        if (req.body.redirectURL !== 0) {
-            redirectURL = APP_DEFAULT_PATH
-        }
 
-        if (!email || !otp || !purpose || purpose === null) {
+        if (!email || !otp || !purpose || purpose === null || !client_id) {
             return res.status(400).json({ success: false, message: "Email, OTP and purpose are required." });
         }
 
@@ -165,9 +160,7 @@ Router.post('/verify-otp', async (req, res) => {
 
         const tokens = await issueSession(user, req, res, 'register');
 
-        let finalUrl = `${redirectURL}`
-
-        res.status(200).json({ success: true, message: "OTP verified successfully.", accessToken: tokens.accessToken, redirectURL: finalUrl || '/dashboard' });
+        res.status(200).json({ success: true, message: "OTP verified successfully.", accessToken: tokens.accessToken });
 
     } catch (error) {
         logError(error);
@@ -277,7 +270,7 @@ Router.post('/logout', async (req, res) => {
         }
         token = crypto.createHash('sha256').update(token).digest('hex');
 
-        const session = await Session.findOne({ refreshToken: token });
+        const session = await Session.findOne({ refreshToken: hashToken(token) });
         if (!session) {
             return res.status(400).json({ success: false, message: "Invalid session." });
         }
@@ -288,6 +281,31 @@ Router.post('/logout', async (req, res) => {
 
         res.clearCookie('refreshToken', { path: '/api/auth' });
         res.status(200).json({ success: true, message: "Logged out successfully." });
+
+    } catch (error) {
+        logError(error);
+        res.status(500).json({ success: false, message: "Internal server error." });
+    }
+})
+Router.get('/logout', async (req, res) => {
+    try {
+        let token = req.cookies.refreshToken
+        if (!token) {
+            return res.status(400).json({ success: false, message: "No refresh token provided." });
+        }
+
+        const session = await Session.findOne({ refreshToken: hashToken(token) });
+        console.log(token, hashToken(token))
+        if (!session) {
+            return res.status(400).json({ success: false, message: "Invalid session." });
+        }
+
+        session.revokedBy = 'user';
+        session.revokedAt = new Date();
+        await session.save();
+
+        res.clearCookie('refreshToken'/*,  { path: '/api/auth' }*/);
+        res.redirect('/')
 
     } catch (error) {
         logError(error);
