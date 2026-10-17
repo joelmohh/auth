@@ -43,8 +43,6 @@ Router.patch('/', verifyToken, async (req, res) => {
 
         const {deletedAt, lastLoginAt, termsVersion, termsAcceptedAt, status, ...rest } = req.body
 
-        console.log(rest)
-
         if (!req.user) {
             return res.status(500).json({ success: false, message: "Something went wrong. Please, try again." })
         }
@@ -70,8 +68,6 @@ Router.patch('/', verifyToken, async (req, res) => {
         if (updatedUser.status !== 'active') {
             return res.status(403).json({ success: false, message: "Authorization error, account not active" })
         }
-
-        console.log(updatedUser)
 
         const userData = {
             username: updatedUser.username,

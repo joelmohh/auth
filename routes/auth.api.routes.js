@@ -295,7 +295,6 @@ Router.get('/logout', async (req, res) => {
         }
 
         const session = await Session.findOne({ refreshToken: hashToken(token) });
-        console.log(token, hashToken(token))
         if (!session) {
             return res.status(400).json({ success: false, message: "Invalid session." });
         }

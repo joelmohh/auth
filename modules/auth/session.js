@@ -130,7 +130,6 @@ async function notLoggedIn(req, res, next) {
 }
 async function loggedIn(req, res, next) {
     if (!req.cookies.refreshToken) {
-        console.log('A')
         next('/')
     } else {
         next()
