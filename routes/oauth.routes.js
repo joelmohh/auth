@@ -1,5 +1,4 @@
 const Router = require('express').Router()
-const bcrypt = require('bcrypt')
 const crypto = require('crypto')
 
 const App = require('../models/App')
@@ -11,7 +10,6 @@ const AuthCode = require('../models/AuthCode')
 const { logError } = require('../modules/logs') 
 const { verifyToken } = require('../modules/auth/session')
 const { default: mongoose } = require('mongoose')
-const { encrypt, decrypt } = require(`../modules/crypto`)
 const { issueSession } = require('../modules/auth/session')
 
 Router.get('/authorize', async (req, res) => {
@@ -23,13 +21,13 @@ Router.get('/authorize', async (req, res) => {
             return res.status(403).json({success: false, message: "Missing required query params"})
         }
 
-        const app = await App.exists({ clientId: client_id })
+        const app = await App.findOne({ clientId: client_id, status: 'active' })
 
         if(!app){
             return res.status(404).json({success: false, message: "App not found, incorrect client_id"})
         }
 
-        if(!app.redirectUrls.includes(redirect_url)){
+        if(!app.redirectUrls?.includes(redirect_url)){
             return res.status(401).json({success: true, message: "Incorrect redirec_url."})
         }
 
@@ -50,31 +48,42 @@ Router.post(`/authorize`, verifyToken, async(req, res) => {
             return res.status(400).json({success: false, message: "Invalid app id on body"})
         }
 
-        const user = await User.exists({_id: req.user.id})
+        const user = await User.findOne({_id: req.user.id, status: 'active'})
 
         if(!user){
             return res.status(404).json({ success: false, message:"User not found."})
         }
 
-        const grant = await Grant.insertOne({
-            userId: user._id,
-            appId,
-            scopes,
-            lastUsedAt: Date.now()
-        })
+        const app = await App.findOne({ _id: req.user.id, satus: 'active'})
+
+        if(!app){
+            return res.status(404).json({ success: false, message: "App not found."})
+        }
+
+        const requestedScopes = Array.isArray(scopes) ? scopes : []
+        if(requestedScopes.some(scope => !app.scopes.includes(scope))){
+            return res.status(400).json({success: false, message: "Requested scope is not enabled for this app"})
+        }
+    
+        const grant = await Grant.findOneAndUpdate(
+            { userId: user._id, appId },
+            { $set: { scopes: requestedScopes, lastUsedAt: Date.now(), revokedAt: null}},
+            { upsert: true, returnDocument: 'after', runValidators: true}
+        )
 
         if(!grant){
             return res.status(400).json({success: false, message: "Fail to grant authorization."})
         }
         
         const code = crypto.randomBytes(8).toString('hex')
-        const codeHash = encrypt(code)
+        const codeHash = crypto.createHash('sha256').update(code).digest('hex')
 
         const auth_code = await AuthCode.insertOne({
             codeHash, 
             appId,
             userId: user._id,
-            scopes
+            scopes: requestedScopes,
+            expiresAt: new Date(Date.now() + 10 * 60 * 1000)
         }) 
 
         if(!auth_code){
@@ -98,20 +107,25 @@ Router.post('/token', async (req, res) => {
             return res.status(400).json({ success: false, message:"Field 'token' is missing."})
         }
 
-        const auth_code = await AuthCode.exists({
-            codeHash: encrypt(token)
+        const auth_code = await AuthCode.findOne({
+            codeHash: crypto.createHash('sha256').update(token).digest('hex')
         })
 
         if(!auth_code){
             return res.status(404).json({ success: false, message: "Code not found."})
         }
 
-        const user = await User.exists({_id: auth_code.userId})
+        if(auth_code.userAr || auth_code.expiresAt <= new Date()){
+            return res.status(400).json({ success: false, message: "Code expired or already used."})
+        }
+        const user = await User.exists({_id: auth_code.userId, status: 'active'})
 
         if(!user){
             return res.status(404).json({ success: false, message: "User not found."})
         }
 
+        auth_code.usedAt = new Date()
+        await auth_code.save()
         const tokens = await issueSession(user, req, res, 'out', auth_code.appId)
 
         res.status(200).json({ success: true, message: "Authenticated successfully.", data: tokens.accessToken})
@@ -128,9 +142,8 @@ Router.post('/revoke', async (req, res) => {
         if (!token) {
             return res.status(400).json({ success: false, message: "No refresh token provided." });
         }
-        token = crypto.createHash('sha256').update(token).digest('hex');
 
-        const session = await Session.findOne({ refreshToken: token });
+        const session = await Session.findOne({ refreshToken: crypto.createHash('sha256').update(token).digest('hex')});
         if (!session) {
             return res.status(400).json({ success: false, message: "Invalid session." });
         }

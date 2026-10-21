@@ -13,7 +13,8 @@ const GrantSchema = new mongoose.Schema({
     scopes:[{type:String}],
     lastUsedAt: Date,
     email: Date,
-    revokedAt: Date
+    revokedAt: Date,
+    bannedAt: Date
 }, {timestamps: true})
 GrantSchema.index({ userId: 1, appId: 1 }, { unique: true })
 GrantSchema.index({ appId: 1 })

@@ -122,17 +122,11 @@ Router.post('/verify-otp', async (req, res) => {
             return res.status(403).json({ success: false, message: "Authorization error, account not active" })
         }
 
-        const existingOtp = await Otp.findOneAndUpdate(
-            {
-                userId: user._id,
-                ...(purpose !== undefined && { purpose }),
-                expiresAt: {
-                    $gt: new Date()
-                }
-            },
-            { $inc: { tries: 1 } },
-            { returnDocument: "after" }
-        ).select("+code")
+        const existingOtp = await Otp.findOne({
+            userId: user._id,
+            purpose,
+            expiresAt: { $gt: new Date() }
+        }).select("+code")
 
         if (!existingOtp) {
             return res.status(404).json({ success: false, message: "OTP expired or not found. Please request a new one." });
@@ -143,11 +137,13 @@ Router.post('/verify-otp', async (req, res) => {
             return res.status(400).json({ success: false, message: "OTP expired or not found. Please request a new one." });
         }
 
-        if (existingOtp.tries > existingOtp.maxTries) {
+        if (existingOtp.tries >= existingOtp.maxTries) {
             return res.status(429).json({ success: false, message: "Too many attempts. Please request a new code" })
         }
 
         if (existingOtp.code !== otp) {
+            existingOtp.tries += 1
+            await existingOtp.save()
             return res.status(400).json({ success: false, message: "Invalid OTP." });
         }
 
@@ -268,9 +264,8 @@ Router.post('/logout', async (req, res) => {
         if (!token) {
             return res.status(400).json({ success: false, message: "No refresh token provided." });
         }
-        token = crypto.createHash('sha256').update(token).digest('hex');
 
-        const session = await Session.findOne({ refreshToken: hashToken(token) });
+        const session = await Session.findOne({ refreshToken: hashToken(token) }).select('+refreshToken')
         if (!session) {
             return res.status(400).json({ success: false, message: "Invalid session." });
         }
@@ -294,7 +289,7 @@ Router.get('/logout', async (req, res) => {
             return res.status(400).json({ success: false, message: "No refresh token provided." });
         }
 
-        const session = await Session.findOne({ refreshToken: hashToken(token) });
+        const session = await Session.findOne({ refreshToken: hashToken(token) }).select('+refreshToken')
         if (!session) {
             return res.status(400).json({ success: false, message: "Invalid session." });
         }

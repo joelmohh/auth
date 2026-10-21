@@ -18,17 +18,14 @@ app.use((req, res, next) => {
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
 app.use(cookieParser());
-app.use((req, res, next) => {
-  res.setHeader('X-Powered-By', 'PHP/8.3.0');
-  next();
-});
+app.disable('x-powered-by')
 
 const PORT = process.env.PORT || 3000;
 
 app.use('/', generalLimiter, require('./routes/static.routes'));
-app.use('/oauth', apiLimiter, validationModule,require('./routes/oauth.routes'));
-app.use('/api/auth', apiLimiter, validationModule,require('./routes/auth.api.routes'));
-app.use('/api/apps', apiLimiter, validationModule,require('./routes/apps.api.routes'));
+app.use('/oauth', apiLimiter, validationModule, require('./routes/oauth.routes'));
+app.use('/api/auth', apiLimiter, validationModule, require('./routes/auth.api.routes'));
+app.use('/api/apps', apiLimiter, validationModule, require('./routes/apps.api.routes'));
 app.use('/api/me', apiLimiter, validationModule, require('./routes/user.api.routes'));
 
 app.get('/teapot', (req, res) => {

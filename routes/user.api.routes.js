@@ -5,6 +5,7 @@ const Session = require('../models/Session')
 
 const { verifyToken } = require("../modules/auth/session")
 const { logError } = require('../modules/logs')
+const { default: mongoose } = require("mongoose")
 
 Router.get('/', verifyToken, async (req, res) => {
     try {
@@ -75,7 +76,7 @@ Router.patch('/', verifyToken, async (req, res) => {
             emailVerified: updatedUser.emailVerifiedAt ? true : false,
             profile: updatedUser.profile,
             phone: updatedUser.phone,
-            adress: updatedUser.adress,
+            address: updatedUser.adress,
             birthDate: updatedUser.birthDate,
             accountStatus: updatedUser.status
         }
@@ -94,13 +95,19 @@ Router.delete('/', verifyToken, async (req, res) => {
             return res.status(400).json({ success: false, message: "Missing required fields" })
         }
 
-        const user = await User.findByIdAndUpdate(req.user.id, {
+        const user = FindONe({ _id: req.user.id, status: 'active'})
+        if(!user) {
+            return res.status(403).json({ success: false, message: 'Authorization error, account not active' })
+        }
+        await User.findByIdAndUpdate(user._id, {
             status: 'deleted',
             deletedAt: Date.now()
-        },
-            {
-                returnDocument: "after"
-            })
+        })
+
+        await User.findByIdAndUpdate(req.user.id, {
+            status: 'deleted',
+            deletedAt: Date.now()
+        })
 
         if (!user) {
             return res.status(404).json({ success: false, message: "No user found" })
@@ -110,7 +117,7 @@ Router.delete('/', verifyToken, async (req, res) => {
             return res.status(403).json({ success: false, message: "Authorization error, account not active" })
         }
 
-        const sessions = await Session.updateMany({
+        await Session.updateMany({
             userId: req.user.id
         },
             {
@@ -168,9 +175,13 @@ Router.get('/sessions/:id', verifyToken, async (req, res) => {
             return res.status(404).json({ sucess: false, message: "User not found" })
         }
 
-        const sessions = await Session.find({ _id: req.params.id, userId: req.user.id })
+        if(!mongoose.isValidObjectId(req.params.id)){
+            return res.status(400).json({ success: false, message: "Malformed user id"})
+        }
 
-        if (!sessions) {
+        const sessions = await Session.find({ _id: req.params.id, userId: req.user.id }).select('-refreshToken -lastRefreshToken')
+
+        if (sessions.length === 0) {
             return res.status(404).json({ sucess: false, message: "No active found" })
         }
 

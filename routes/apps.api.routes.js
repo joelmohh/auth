@@ -58,6 +58,9 @@ Router.post('/', verifyToken, async (req, res) => {
         const clientId = crypto.randomBytes(16).toString('hex')
         const clientSecret = encrypt(crypto.randomBytes(64).toString('hex'))
 
+        if (redirectUrls !== undefined && (!Array.isArray(redirectUrls)) || redirectUrls.some(url => !/^https?:\/\/\S+$/i.test(url))) {
+            return res.status(400).json({ success: false, message: "Invalid redirect URLs." })
+        }
 
         const app = await App.create({
             ownerId: user._id,
@@ -91,7 +94,11 @@ Router.get('/:id', verifyToken, async (req, res) => {
             return res.status(401).json({ success: false, message: "Unauthorized" })
         }
 
-        const app = await App.findById(req.params.id)
+        if (!mongoose.isValidObjectId(req.params.id)) {
+            return res.status(400).json({ succes: false, message: "Malformed app id." })
+        }
+
+        const app = await App.findOne({ _id: req.params.id, ownerId: req.user.id })
 
         if (!app) {
             return res.status(404).json({ success: false, message: "No apps found", data: [] })
@@ -124,27 +131,17 @@ Router.patch('/:id', verifyToken, async (req, res) => {
             return res.status(403).json({ success: false, message: "Missing required field (name)." })
         }
 
-        const clientId = crypto.randomBytes(16).toString('hex')
-        const clientSecret = encrypt(crypto.randomBytes(64).toString('hex'))
-
-        const app = await App.create({
-            ownerId: user._id,
-            name: name,
-            description: description || '',
-            clientId,
-            clientSecret,
-            redirectUrls,
-            scopes,
-            providers: []
-        })
+        const app = await App.findOneAndUpdate(
+            { _id: req.params.id, ownerId: user._id },
+            { $set: { name, description, redirectUrls, scopes, providers, theme } },
+            { returnDocument: 'after', runValidators: true }
+        )
 
         if (!app) {
             return res.status(418).json({ success: false, message: "Something went wrong." })
         }
 
-        app.clientSecret = decrypt(clientSecret)
-
-        res.status(200).json({ success: true, message: "App created successfully", data: app })
+        res.status(200).json({ success: true, message: "App updated successfully", data: app })
 
     } catch (error) {
         logError(error)
@@ -182,6 +179,9 @@ Router.put('/:id/redirects', verifyToken, async (req, res) => {
 
         if (!req.params.id || !mongoose.isValidObjectId(req.params.id)) {
             return res.status(403).json({ success: false, message: "Malformed request url" })
+        }
+        if (!Array.isArray(req.body.redirectUrls) || req.body.redirectUrls.some(url => !/^https?:\/\/\S+$/i.test(url))) {
+            return res.status(403).json({ success: false, message: "Missing required fields." })
         }
         if (!req.body.redirectUrls) {
             return res.status(403).json({ success: false, message: "Missing required fields" })
@@ -221,7 +221,7 @@ Router.put('/:id/scopes', verifyToken, async (req, res) => {
             return res.status(403).json({ success: false, message: "Missing required fields." })
         }
 
-        const app = await App.findOneAndUpdate({ ownerId: req.user.id, _id: req.params.id }, { scopes })
+        const app = await App.findOneAndUpdate({ ownerId: req.user.id, _id: req.params.id }, { $set: { scopes: req.body.scopes } }, { returnDocument: 'after' })
 
         if (!app) {
             return res.status(403).json({ success: false, message: "App not found" })
@@ -248,6 +248,10 @@ Router.patch('/:id/appearance', verifyToken, async (req, res) => {
             return res.status(400).json({ success: false, message: "Body cannot be empty" })
         }
 
+        if (primaryColor !== undefined && !/^#[0-9a-f]{3,8}$/i.test(primaryColor)) {
+            return res.status(400).json({ success: false, message: "Invalid primary color." })
+        }
+
         const updateData = {}
 
         if (primaryColor !== undefined) updateData["theme.primaryColor"] = primaryColor
@@ -259,12 +263,13 @@ Router.patch('/:id/appearance', verifyToken, async (req, res) => {
             return res.status(400).json({ success: false, message: "No valid fields provided." })
         }
 
-        const app = await App.findOneAndUpdate({
-            ownerId: req.user.id,
-            _id: req.params.id
-        },
+        const app = await App.findOneAndUpdate(
             {
-                updateData
+                ownerId: req.user.id,
+                _id: req.params.id
+            },
+            {
+                $set: updateData
             },
             {
                 returnDocument: "after"
@@ -323,17 +328,18 @@ Router.put('/:id/providers/:provider', verifyToken, async (req, res) => {
             updates[`providers.$.${key}`] = key === 'clientSecret' ? encrypt(body[key]) : body[key]
         }
 
-        const app = await App.findOneAndUpdate({
+        const existing = await App.findOne({
             ownerId: req.user.id,
             _id: req.params.id
-        },
-            {
-                $set: updates
-            },
-            {
-                returnDocument: "after",
-                runValidators: true
-            })
+        })
+        if (!existing) {
+            return res.status(404).json({ success: false, message: "App not found" })
+        }
+        const providerIndex = existing.providers.findIndex(item => item.provider === req.params.provider)
+        const update = providerIndex >= 0
+            ? { $set: Object.fromEntries(Object.entries(body).map(([key, value]) => [`providers.${providerIndex}.${key}`, key === 'clientSecret' ? encrypt(value) : value])) }
+            : { $push: { providers: { provider: req.params.provider, ...Object.fromEntries(Object.entries(body).map(([key, value]) => [key, key === 'clientSecret' ? encrypt(value) : value])) } } }
+        const app = await App.findOneAndUpdate({ _id: existing._id, ownerId: req.user.id }, update, { returnDocument: "after", runValidators: true })
 
         if (!app) {
             return res.status(404).json({ success: false, message: "App or provider not found" })
@@ -413,7 +419,7 @@ Router.get('/:id/users', verifyToken, async (req, res) => {
             return res.status(404).json({ success: false, message: "App not found" })
         }
 
-        const grants = await Grants.find({ appId: req.params.id, revokedAt: null, bannedAt: null })
+        const grants = await Grant.find({ appId: req.params.id, revokedAt: null, bannedAt: null })
             .populate({ path: 'userId', select: FIELDS, match: { status: 'active' } })
             .select('userId scopes -_id')
             .lean()
@@ -448,13 +454,13 @@ Router.get('/:id/users/:userId', verifyToken, async (req, res) => {
             return res.status(404).json({ success: false, message: "App not found" })
         }
 
-        const grant = await Grants.findOne({
+        const grant = await Grant.findOne({
             appId: req.params.id,
             userId: req.params.userId,
             revokedAt: null,
             bannedAt: null
         })
-            .populate({ path: 'userId', select: ALL_FIELDS, match: { status: 'active' } })
+            .populate({ path: 'userId', select: FIELDS, match: { status: 'active' } })
             .select('userId scopes -_id')
             .lean()
 
@@ -507,13 +513,13 @@ Router.post('/:id/users/:userId/ban', verifyToken, async (req, res) => {
             return res.status(404).json({ success: false, message: "App not found" })
         }
 
-        const grant = await Grant.findOneAndUpdate({ appId: req.params.id, userId: req.params.userId }, {bannedAt: Date.now()})
+        const grant = await Grant.findOneAndUpdate({ appId: req.params.id, userId: req.params.userId }, { bannedAt: Date.now() })
 
         if (!grant) {
             return res.status(404).json({ success: false, message: "User not found" })
         }
 
-        res.status(200).json({ success: true, message: "User banned successfully."})
+        res.status(200).json({ success: true, message: "User banned successfully." })
 
     } catch (error) {
         logError(error)
