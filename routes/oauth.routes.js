@@ -39,7 +39,7 @@ Router.get('/authorize', async (req, res) => {
     }
 })
 
-Router.post(`/authorize`, verifyToken, async(req, res) => {
+Router.post('/authorize', verifyToken, async(req, res) => {
     try {
 
         const {appId, scopes} = req.body
@@ -54,7 +54,7 @@ Router.post(`/authorize`, verifyToken, async(req, res) => {
             return res.status(404).json({ success: false, message:"User not found."})
         }
 
-        const app = await App.findOne({ _id: req.user.id, satus: 'active'})
+        const app = await App.findOne({ _id: appId, satus: 'active'})
 
         if(!app){
             return res.status(404).json({ success: false, message: "App not found."})
@@ -64,7 +64,13 @@ Router.post(`/authorize`, verifyToken, async(req, res) => {
         if(requestedScopes.some(scope => !app.scopes.includes(scope))){
             return res.status(400).json({success: false, message: "Requested scope is not enabled for this app"})
         }
-    
+
+        const existingGrant = await Grant.findOne({ userId: user._id, appId})
+        
+        if(existingGrant?.bannedAt){
+            return res.status(403).json({success: false, message: "User banned from this app"})
+        }
+
         const grant = await Grant.findOneAndUpdate(
             { userId: user._id, appId },
             { $set: { scopes: requestedScopes, lastUsedAt: Date.now(), revokedAt: null}},
@@ -115,7 +121,7 @@ Router.post('/token', async (req, res) => {
             return res.status(404).json({ success: false, message: "Code not found."})
         }
 
-        if(auth_code.userAr || auth_code.expiresAt <= new Date()){
+        if(auth_code.userAt || auth_code.expiresAt <= new Date()){
             return res.status(400).json({ success: false, message: "Code expired or already used."})
         }
         const user = await User.exists({_id: auth_code.userId, status: 'active'})

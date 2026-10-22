@@ -109,7 +109,7 @@ Router.post('/verify-otp', async (req, res) => {
         const { email, otp, purpose, client_id, redirectURL } = req.body;
 
 
-        if (!email || !otp || !purpose || purpose === null || !client_id) {
+        if (!email || !otp || !purpose || purpose === null) {
             return res.status(400).json({ success: false, message: "Email, OTP and purpose are required." });
         }
 

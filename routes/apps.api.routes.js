@@ -399,7 +399,7 @@ const FIELDS = Object.values(SCOPE_FIELDS).flat().join(' ')
 function pickByScopes(user, scopes) {
     const out = { id: user._id }
     for (const scope of scopes) {
-        for (const fiels of SCOPE_FIELDS[scope] ?? []) {
+        for (const field of SCOPE_FIELDS[scope] ?? []) {
             if (user[field] !== undefined) out[field] = user[field]
         }
     }

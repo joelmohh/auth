@@ -26,7 +26,7 @@ Router.get('/', verifyToken, async (req, res) => {
             emailVerified: user.emailVerifiedAt ? true : false,
             profile: user.profile,
             phone: user.phone,
-            adress: user.adress,
+            address: user.address,
             birthDate: user.birthDate,
             accountStatus: user.status
         }
@@ -76,7 +76,7 @@ Router.patch('/', verifyToken, async (req, res) => {
             emailVerified: updatedUser.emailVerifiedAt ? true : false,
             profile: updatedUser.profile,
             phone: updatedUser.phone,
-            address: updatedUser.adress,
+            address: updatedUser.address,
             birthDate: updatedUser.birthDate,
             accountStatus: updatedUser.status
         }
@@ -95,7 +95,7 @@ Router.delete('/', verifyToken, async (req, res) => {
             return res.status(400).json({ success: false, message: "Missing required fields" })
         }
 
-        const user = FindONe({ _id: req.user.id, status: 'active'})
+        const user = await User.findOne({ _id: req.user.id, status: 'active'})
         if(!user) {
             return res.status(403).json({ success: false, message: 'Authorization error, account not active' })
         }
@@ -103,19 +103,6 @@ Router.delete('/', verifyToken, async (req, res) => {
             status: 'deleted',
             deletedAt: Date.now()
         })
-
-        await User.findByIdAndUpdate(req.user.id, {
-            status: 'deleted',
-            deletedAt: Date.now()
-        })
-
-        if (!user) {
-            return res.status(404).json({ success: false, message: "No user found" })
-        }
-
-        if (user.status !== 'active') {
-            return res.status(403).json({ success: false, message: "Authorization error, account not active" })
-        }
 
         await Session.updateMany({
             userId: req.user.id
@@ -129,7 +116,7 @@ Router.delete('/', verifyToken, async (req, res) => {
 
     } catch (error) {
         logError(error)
-        res.send(500).json({ success: false, message: "Internal server error" })
+        res.status(500).json({ success: false, message: "Internal server error." })
     }
 })
 
@@ -148,7 +135,7 @@ Router.get('/sessions', verifyToken, async (req, res) => {
             return res.status(403).json({ success: false, message: "Authorization error, account not active" })
         }
 
-        const sessions = await Session.find({ userId: user._id, revokedAt: null })
+        const sessions = await Session.find({ userId: user._id, revokedAt: null }).select('-refreshToken -lastRefreshToken')
 
         if (!sessions) {
             return res.status(404).json({ sucess: false, message: "No active sessions found" })
