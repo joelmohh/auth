@@ -18,7 +18,6 @@ app.use((req, res, next) => {
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
 app.use(cookieParser());
-app.disable('x-powered-by')
 
 const PORT = process.env.PORT || 3000;
 

@@ -1,5 +1,6 @@
 const Router = require('express').Router()
 const crypto = require('crypto')
+const jwt = require('jsonwebtoken')
 
 const App = require('../models/App')
 const User = require('../models/User')
@@ -7,164 +8,255 @@ const Grant = require('../models/Grant')
 const Session = require('../models/Session')
 const AuthCode = require('../models/AuthCode')
 
-const { logError } = require('../modules/logs') 
-const { verifyToken } = require('../modules/auth/session')
+const { logError } = require('../modules/logs')
+const { verifyToken, hashToken, issueAppTokens } = require('../modules/auth/session')
 const { default: mongoose } = require('mongoose')
+const { decrypt } = require('../modules/crypto')
 const { issueSession } = require('../modules/auth/session')
+
+// Common functions
+
+function requestedScopes(value) {
+    if (Array.isArray(value)) return value
+    if (typeof value === 'string') return value.trim().split(/\s+/).filter(Boolean)
+    return []
+}
+
+function errorRedirect(res, redirectURL, state, error, desc) {
+    const url = new URL(redirectURL)
+    url.searchParams.set('error', error)
+    if (desc) url.searchParams.set('error_description', desc)
+    if (state) url.searchParams.set('state', state)
+    return res.redirect(url.toString())
+}
+
+async function findClient(clientId, clientSecret) {
+    const app = await App.findOne({ clientId, status: 'active' }).select('+clientSecret')
+    if (!app || !clientSecret) return null
+    try {
+        const expected = decrypt(app.clientSecret)
+        const provided = Buffer.from(clientSecret)
+        const actual = Buffer.from(expected)
+
+        if (provided.length !== actual.length || !crypto.timingSafeEqual(provided, actual)) return null
+
+        return app
+    } catch (error) {
+        logError(error)
+        return null
+    }
+}
+function verifyPkce(verifier, challenge, method) {
+    if (!challenge) return true
+    if (!verifier || method !== 'S256') return false
+    const calculated = crypto.createHash('sha256').update(verifier).digest('base64url')
+    const expected = Buffer.from(challenge)
+    const actual = Buffer.from(calculated)
+    return expected.length === actual.length && crypto.timingSafeEqual(actual, expected)
+}
 
 Router.get('/authorize', async (req, res) => {
     try {
 
-        const { client_id, redirect_url, scope } = req.query
+        const { client_id, redirect_uri, scope, state, code_challenge, code_challenge_method } = req.query
 
-        if(!client_id || !redirect_url || !scope){
-            return res.status(403).json({success: false, message: "Missing required query params"})
+        if (!client_id || !redirect_uri || !scope) {
+            return res.status(403).json({ success: false, message: "Missing required query params" })
         }
 
         const app = await App.findOne({ clientId: client_id, status: 'active' })
-
-        if(!app){
-            return res.status(404).json({success: false, message: "App not found, incorrect client_id"})
+        if (!clientId || !redirectUri || responseType !== 'code' || !scope || !app) {
+            return res.status(app ? 400 : 404).json({ success: false, message: 'Invalid authorization request.' })
         }
 
-        if(!app.redirectUrls?.includes(redirect_url)){
-            return res.status(401).json({success: true, message: "Incorrect redirec_url."})
+        if (!app.redirectUrls?.includes(redirect_uri)) {
+            return res.status(400).json({ success: true, message: "Incorrect redirec_url." })
+        }
+        if (code_challenge && code_challenge_method !== 'S256') {
+            return res.status(400).json({ success: false, message: 'Only S256 PKCE is supported.' })
         }
 
-        res.status(200).render('authorize', { app })
+        const scopes = requestedScopes(scope)
+        if (!scope.length || scopes.some(item => !app.scopes.includes(item))) {
+            return res.status(400).json({ success: false, message: 'Invalid requested scopes.' })
+        }
+
+
+        res.status(200).render('authorize', {
+            app,
+            client_id,
+            redirect_uri,
+            scopes,
+            state: state || '',
+            code_challenge: code_challenge || '',
+            code_challenge_method: code_challenge_method || '',
+        })
 
     } catch (error) {
         logError(error)
-        res.status(500).json({ success: false, message: "Internal server error."})
+        res.status(500).json({ success: false, message: "Internal server error." })
     }
 })
 
-Router.post('/authorize', verifyToken, async(req, res) => {
+Router.post('/authorize', verifyToken, async (req, res) => {
     try {
 
-        const {appId, scopes} = req.body
-        
-        if(!appId || !mongoose.isValidObjectId(appId)){
-            return res.status(400).json({success: false, message: "Invalid app id on body"})
+        const { client_id, redirect_uri, scope, state, code_challenge, code_challenge_method, decision } = req.body
+
+        const app = await App.findOne({ client_id, status: 'active' })
+        if (!app || !redirect_uri || !app.redirectUrls?.includes(redirect_uri)) {
+            return res.status(400).json({ success: false, message: 'Invalid authorization request.' })
         }
-
-        const user = await User.findOne({_id: req.user.id, status: 'active'})
-
-        if(!user){
-            return res.status(404).json({ success: false, message:"User not found."})
+        const scopes = requestedScopes(scope)
+        if (!scopes.length || scopes.some(item => !app.scopes.includes(item))) {
+            return redirectWithError(res, redirect_uri, state, 'invalid_scope', 'Requested scope is not enabled.')
         }
-
-        const app = await App.findOne({ _id: appId, status: 'active'})
-
-        if(!app){
-            return res.status(404).json({ success: false, message: "App not found."})
+        if (decision === 'deny') {
+            return redirectWithError(res, redirect_uri, state, 'access_denied', 'The user denied the request.')
         }
-
-        const requestedScopes = Array.isArray(scopes) ? scopes : []
-        if(requestedScopes.some(scope => !app.scopes.includes(scope))){
-            return res.status(400).json({success: false, message: "Requested scope is not enabled for this app"})
+        if (code_challenge_method && code_challenge_method !== 'S256') {
+            return redirectWithError(res, redirect_uri, state, 'invalid_request', 'Only S256 PKCE is supported.')
         }
-
-        const existingGrant = await Grant.findOne({ userId: user._id, appId})
-        
-        if(existingGrant?.bannedAt){
-            return res.status(403).json({success: false, message: "User banned from this app"})
-        }
-
+        const user = await User.findOne({ _id: req.user.id, status: 'active' })
+        if (!user) return res.status(404).json({ success: false, message: 'User not found.' })
+        const existingGrant = await Grant.findOne({ userId: user._id, appId: app._id })
+        if (existingGrant?.bannedAt) return redirectWithError(res, redirect_uri, state, 'access_denied', 'Access to this app is blocked.')
         const grant = await Grant.findOneAndUpdate(
-            { userId: user._id, appId },
-            { $set: { scopes: requestedScopes, lastUsedAt: Date.now(), revokedAt: null}},
-            { upsert: true, returnDocument: 'after', runValidators: true}
+            { userId: user._id, appId: app._id },
+            { $set: { scopes, lastUsedAt: new Date(), revokedAt: null }, $setOnInsert: { bannedAt: null } },
+            { upsert: true, new: true, runValidators: true }
         )
-
-        if(!grant){
-            return res.status(400).json({success: false, message: "Fail to grant authorization."})
-        }
-        
-        const code = crypto.randomBytes(8).toString('hex')
-        const codeHash = crypto.createHash('sha256').update(code).digest('hex')
-
-        const auth_code = await AuthCode.insertOne({
-            codeHash, 
-            appId,
+        const code = crypto.randomBytes(32).toString('base64url')
+        await AuthCode.create({
+            codeHash: hashToken(code),
+            appId: app._id,
             userId: user._id,
-            scopes: requestedScopes,
-            expiresAt: new Date(Date.now() + 10 * 60 * 1000)
-        }) 
-
-        if(!auth_code){
-            return res.status(400).json({ success: false, message: "Fail to create auth_code, please try again."})
-        }
-
-        return res.status(200).json({success: true, message:"Acess authorized successfully.", authorized: true, code: code })
-
-    } catch(error) {
+            redirectUri: redirect_uri,
+            scopes,
+            state: state || undefined,
+            codeChallenge: code_challenge || undefined,
+            codeChallengeMethod: code_challenge_method ? code_challenge_method : undefined,
+            expiresAt: new Date(Date.now() + CODE_TTL)
+        })
+        const redirect = new URL(redirect_uri)
+        redirect.searchParams.set('code', code)
+        if (state) redirect.searchParams.set('state', state)
+        return res.redirect(redirect.toString())
+    } catch (error) {
         logError(error)
-        res.status(500).json({ success: false, message:"Internal server error."})
+        res.status(500).json({ success: false, message: 'Internal server error.' })
     }
 })
+
 
 Router.post('/token', async (req, res) => {
     try {
-        
-        const { token } = req.body 
-        
-        if(!token){
-            return res.status(400).json({ success: false, message:"Field 'token' is missing."})
+        const {
+            grant_type: grantType,
+            code,
+            client_id: clientId,
+            client_secret: clientSecret,
+            redirect_uri: redirectUri,
+            code_verifier: codeVerifier,
+            refresh_token: refreshToken
+        } = req.body
+        if (!grantType || !clientId || !clientSecret) {
+            return res.status(400).json({ error: 'invalid_request', error_description: 'grant_type, client_id and client_secret are required.' })
+        }
+        const app = await findClient(clientId, clientSecret)
+        if (!app) return res.status(401).json({ error: 'invalid_client' })
+
+        if (grantType === 'authorization_code') {
+            if (!code || !redirectUri) return res.status(400).json({ error: 'invalid_request' })
+            const pkceChallenge = codeVerifier
+                ? crypto.createHash('sha256').update(codeVerifier).digest('base64url')
+                : null
+            const authCode = await AuthCode.findOneAndUpdate(
+                {
+                    codeHash: hashToken(code),
+                    appId: app._id,
+                    redirectUri,
+                    usedAt: null,
+                    expiresAt: { $gt: new Date() },
+                    $or: [{ codeChallenge: null }, { codeChallenge: pkceChallenge }]
+                },
+                { $set: { usedAt: new Date() } },
+                { new: true }
+            )
+            if (!authCode || !verifyPkce(codeVerifier, authCode.codeChallenge, authCode.codeChallengeMethod)) {
+                return res.status(400).json({ error: 'invalid_grant' })
+            }
+            const user = await User.findOne({ _id: authCode.userId, status: 'active' })
+            const grant = await Grant.findOne({ userId: authCode.userId, appId: app._id, revokedAt: null, bannedAt: null })
+            if (!user || !grant) return res.status(400).json({ error: 'invalid_grant' })
+            const tokens = await issueAppTokens(user, req, app._id, grant)
+            return res.json({ access_token: tokens.accessToken, token_type: 'Bearer', expires_in: 3600, refresh_token: tokens.refreshToken, scope: authCode.scopes.join(' ') })
         }
 
-        const auth_code = await AuthCode.findOne({
-            codeHash: crypto.createHash('sha256').update(token).digest('hex'),
-            usedAt: null
-        })
-
-        if(!auth_code){
-            return res.status(404).json({ success: false, message: "Code not found."})
+        if (grantType === 'refresh_token') {
+            if (!refreshToken) return res.status(400).json({ error: 'invalid_request' })
+            const current = await RefreshTokens.findOneAndUpdate(
+                { refreshToken: hashToken(refreshToken), appId: app._id, revokedAt: null, expiresAt: { $gt: new Date() } },
+                { $set: { revokedAt: new Date() } },
+                { new: true }
+            )
+            if (!current) return res.status(400).json({ error: 'invalid_grant' })
+            const grant = await Grant.findOne({ _id: current.grantId, appId: app._id, userId: current.userId, revokedAt: null, bannedAt: null })
+            const user = await User.findOne({ _id: current.userId, status: 'active' })
+            if (!grant || !user) return res.status(400).json({ error: 'invalid_grant' })
+            const tokens = await issueAppTokens(user, req, app._id, grant)
+            return res.json({ access_token: tokens.accessToken, token_type: 'Bearer', expires_in: 3600, refresh_token: tokens.refreshToken, scope: current.scopes.join(' ') })
         }
-
-        if(auth_code.userAt || auth_code.expiresAt <= new Date()){
-            return res.status(400).json({ success: false, message: "Code expired or already used."})
-        }
-        const user = await User.exists({_id: auth_code.userId, status: 'active'})
-
-        if(!user){
-            return res.status(404).json({ success: false, message: "User not found."})
-        }
-
-        auth_code.usedAt = new Date()
-        await auth_code.save()
-        const tokens = await issueSession(user, req, res, 'out', auth_code.appId)
-
-        res.status(200).json({ success: true, message: "Authenticated successfully.", data: tokens.accessToken})
-
+        return res.status(400).json({ error: 'unsupported_grant_type' })
     } catch (error) {
         logError(error)
-        res.status(500).json({ success: false, message: "Internal server error."})
+        res.status(500).json({ error: 'server_error' })
+    }
+})
+
+Router.get('/userinfo', verifyToken, async (req, res) => {
+    try {
+        if (!req.session.appId || !req.grant) return res.status(403).json({ error: 'invalid_token' })
+        const user = await User.findById(req.user.id).select('_id username email emailVerifiedAt profile phone address birthDate')
+        const result = { sub: String(user._id) }
+        const fields = {
+            username: ['username'],
+            email: ['email', 'emailVerifiedAt'],
+            profile: ['profile'],
+            phone: ['phone'],
+            address: ['address'],
+            birthDate: ['birthDate']
+        }
+        for (const scope of req.grant.scopes) for (const field of fields[scope] || []) if (user[field] !== undefined) result[field] = user[field]
+        res.json(result)
+    } catch (error) {
+        logError(error)
+        res.status(500).json({ error: 'server_error' })
     }
 })
 
 Router.post('/revoke', async (req, res) => {
     try {
-        let token = req.cookies['refreshToken'];
-        if (!token) {
-            return res.status(400).json({ success: false, message: "No refresh token provided." });
+        const { token, token_type_hint: hint, client_id: clientId, client_secret: clientSecret } = req.body
+        if (!token || !clientId || !clientSecret) return res.status(400).json({ error: 'invalid_request' })
+        const app = await findClient(clientId, clientSecret)
+        if (!app) return res.status(401).json({ error: 'invalid_client' })
+        const hash = hashToken(token)
+        const refresh = await RefreshTokens.findOneAndUpdate({ refreshToken: hash, appId: app._id, revokedAt: null }, { $set: { revokedAt: new Date() } }, { new: true })
+        if (refresh) {
+            await Session.updateMany({ appId: app._id, userId: refresh.userId, refreshToken: hash }, { $set: { revokedAt: new Date(), revokedBy: 'user' } })
+        } else if (hint === 'access_token' || !hint) {
+            try {
+                const decoded = jwt.verify(token, process.env.JWT_SECRET)
+                if (decoded.appId === String(app._id)) await Session.updateOne({ _id: decoded.sessionId, appId: app._id }, { $set: { revokedAt: new Date(), revokedBy: 'user' } })
+            } catch (error) {
+                if (error.name !== 'JsonWebTokenError' && error.name !== 'TokenExpiredError') throw error
+            }
         }
-
-        const session = await Session.findOne({ refreshToken: crypto.createHash('sha256').update(token).digest('hex')});
-        if (!session) {
-            return res.status(400).json({ success: false, message: "Invalid session." });
-        }
-
-        session.revokedBy = 'user';
-        session.revokedAt = new Date();
-        await session.save();
-
-        res.clearCookie('refreshToken', { path: '/api/auth' });
-        res.status(200).json({ success: true, message: "Logged out successfully." });
-
+        res.status(200).json({})
     } catch (error) {
-        logError(error);
-        res.status(500).json({ success: false, message: "Internal server error." });
+        logError(error)
+        res.status(500).json({ error: 'server_error' })
     }
 })
 

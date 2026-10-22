@@ -5,6 +5,8 @@ const { verifyToken } = require('../modules/auth/session');
 const App = require('../models/App');
 const User = require('../models/User');
 const Grant = require('../models/Grant');
+const Session = require('../models/Session')
+const RefreshTokens = require('../models/RefreshTokens')
 const { logError } = require('../modules/logs');
 const { encrypt, decrypt } = require('../modules/crypto');
 const { default: mongoose } = require('mongoose');
@@ -165,6 +167,12 @@ Router.delete('/:id', verifyToken, async (req, res) => {
         if (!app) {
             return res.status(404).json({ success: false, message: "No app found", data: [] })
         }
+
+        await Promise.all([
+            Grant.deleteMany({ appId: app._id }),
+            Session.updateMany({ appId: app._id, revokedAt: null }, { $set: { revokedAt: new Date(), revokedBy: 'system' } }),
+            RefreshTokens.updateMany({ appId: app._id, revokedAt: null }, { $set: { revokedAt: new Date() } })
+        ])
 
         res.status(200).json({ success: true, message: "App deleted successfully", data: app })
 
@@ -493,6 +501,11 @@ Router.delete('/:id/users/:userId', verifyToken, async (req, res) => {
             return res.status(404).json({ success: false, message: "User not found" })
         }
 
+        await Promise.all([
+            Session.updateMany({ appId: req.params.id, userId: req.params.userId, revokedAt: null }, { $set: { revokedAt: new Date(), revokedBy: 'system' } }),
+            RefreshTokens.updateMany({ appId: req.params.id, userId: req.params.userId, revokedAt: null }, { $set: { revokedAt: new Date() } })
+        ])
+
         res.status(200).json({ success: true, message: "User permission revoked successfully" })
 
     } catch (error) {
@@ -513,11 +526,28 @@ Router.post('/:id/users/:userId/ban', verifyToken, async (req, res) => {
             return res.status(404).json({ success: false, message: "App not found" })
         }
 
-        const grant = await Grant.findOneAndUpdate({ appId: req.params.id, userId: req.params.userId }, { bannedAt: Date.now() })
+        const grant = await Grant.findOneAndUpdate({
+            appId: req.params.id,
+            userId: req.params.userId
+        },
+            {
+                $set: {
+                    bannedAt: new Date(),
+                    revokedAt: new Date()
+                }
+            },
+            {
+                returnDocument: 'after'
+            })
 
         if (!grant) {
             return res.status(404).json({ success: false, message: "User not found" })
         }
+
+        await Promise.all([
+            Session.updateMany({ appId: req.params.id, userId: req.params.userId, revokedAt: null }, { $set: { revokedAt: new Date(), revokedBy: 'system' } }),
+            RefreshTokens.updateMany({ appId: req.params.id, userId: req.params.userId, revokedAt: null }, { $set: { revokedAt: new Date() } })
+        ])
 
         res.status(200).json({ success: true, message: "User banned successfully." })
 

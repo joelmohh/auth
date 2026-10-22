@@ -31,8 +31,14 @@ const appSchema = new mongoose.Schema({
         type: Date,
         default: Date.now()
     },
-    redirectUrls: [{type: String}],
-    scopes: [{type: String}],
+    redirectUrls: {
+        type: [String],
+        default: []
+    },
+    scopes: {
+        type: [String],
+        default: []
+    },
     providers: [{
         provider: {
             _id: false,

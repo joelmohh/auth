@@ -37,7 +37,7 @@ const sessionSchema = new mongoose.Schema({
     },
     appId:{
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: 'App',
         default: null
     },
     rotatedAt:{

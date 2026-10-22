@@ -21,7 +21,7 @@ const RefreshTokens = new Schema({
         required: true
     },
     scopes: [String],
-    rotatedForm:{
+    rotatedFrom:{
         type: mongoose.Schema.Types.ObjectId, 
         ref:"refreshTokens"
     },

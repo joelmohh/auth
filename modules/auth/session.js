@@ -3,7 +3,8 @@ const jwt = require('jsonwebtoken');
 const Session = require('../../models/Session');
 const User = require('../../models/User');
 const { logError } = require('../logs');
-const fs = require('fs')
+const fs = require('fs');
+const Grant = require('../../models/Grant');
 
 function hashToken(token) {
     return crypto.createHash('sha256').update(token).digest('hex');
@@ -33,6 +34,27 @@ async function verifyToken(req, res, next) {
         if (!session) {
             return res.status(403).json({ success: false, message: 'Session not found or revoked.' });
         }
+
+        if (session.appId) {
+            const app = await App.findOne({ _id: session.appId, status: 'active' })
+            const grant = await Grant.findOne({
+                appId: session.appId,
+                userId: decoded.id,
+                revokedAt: null,
+                bannedAt: null
+            })
+
+            if (!app || !grant) {
+                return res.status(403).json({ success: false, message: "Application access has been revoked." })
+            }
+
+            if(decoded.appId !== String(session.appId)){
+                return res.status(403).json({ success: false, message: "Invalid aplication token."})
+            }
+
+            req.grant = grant
+        }
+
 
         const user = await User.findById(decoded.id)
 
@@ -84,8 +106,8 @@ async function verifyRefreshToken(req, res, next) {
     }
 }
 
-function signAccessToken(userId, sessionId) {
-    return jwt.sign({ id: userId, sessionId }, process.env.JWT_SECRET, { expiresIn: "1h" });
+function signAccessToken(userId, sessionId, appId = null) {
+    return jwt.sign({ id: userId, sessionId, ...(appId ? { appId: String(appId) } : {}) }, process.env.JWT_SECRET, { expiresIn: "1h" });
 }
 
 function setRefreshCookie(res, refreshToken) {
@@ -112,7 +134,31 @@ async function issueSession(user, req, res, type = 'default', appId = null) {
     await User.findOneAndUpdate({ _id: user._id }, { lastLoginAt: Date.now() })
 
     setRefreshCookie(res, refreshToken)
-    return { accessToken: signAccessToken(user._id, session.id), refreshToken: refreshToken }
+    return { accessToken: signAccessToken(user._id, session.id, appId), refreshToken: refreshToken }
+}
+
+async function issueAppTokens(user, req, appId, grant) {
+    const refreshToken = crypto.randomBytes(64).toString('hex');
+    const session = await Session.create({
+        userId: user._id,
+        refreshToken: hashToken(refreshToken),
+        userAgent: req.headers['user-agent'] || '',
+        ip: req.headers['cf-connectiong-ip'] || req.ip || 'unknown',
+        type: 'out',
+        appId
+    });
+    await RefreshTokens.create({
+        refreshToken: hashToken(refreshToken),
+        grantId: grant._id,
+        appId,
+        userId: user._id,
+        scopes: grant.scopes,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    });
+    return {
+        accessToken: signAccessToken(user._id, session.id, appId),
+        refreshToken
+    };
 }
 
 async function notLoggedIn(req, res, next) {
@@ -136,4 +182,4 @@ async function loggedIn(req, res, next) {
     }
 }
 
-module.exports = { hashToken, verifyToken, notLoggedIn, loggedIn, verifyRefreshToken, issueSession, setRefreshCookie, signAccessToken };
+module.exports = { issueAppTokens, hashToken, verifyToken, notLoggedIn, loggedIn, verifyRefreshToken, issueSession, setRefreshCookie, signAccessToken };

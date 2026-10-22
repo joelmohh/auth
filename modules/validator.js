@@ -15,7 +15,7 @@ const fieldRules = {
   termsAccepted: body('termsAccepted').isBoolean({ loose: true }).notEmpty().withMessage('Invalid value'),
 
   otp: body('otp').isInt().isLength({ min: 6, max: 6 }).notEmpty().withMessage('Invalid or missing field'),
-  code: body('code').isInt().isLength({ min: 6, max: 6 }).notEmpty().withMessage('Invalid or missing field'),
+  code: body('code').isString().isLength({ min: 6, max: 6 }).notEmpty().withMessage('Invalid or missing field'),
 
   purpose: body('purpose').isIn(["verify_email", "login", "password_reset"]).notEmpty().withMessage('Invalid or missing field'),
 
