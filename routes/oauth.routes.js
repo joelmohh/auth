@@ -54,7 +54,7 @@ Router.post('/authorize', verifyToken, async(req, res) => {
             return res.status(404).json({ success: false, message:"User not found."})
         }
 
-        const app = await App.findOne({ _id: appId, satus: 'active'})
+        const app = await App.findOne({ _id: appId, status: 'active'})
 
         if(!app){
             return res.status(404).json({ success: false, message: "App not found."})
@@ -114,7 +114,8 @@ Router.post('/token', async (req, res) => {
         }
 
         const auth_code = await AuthCode.findOne({
-            codeHash: crypto.createHash('sha256').update(token).digest('hex')
+            codeHash: crypto.createHash('sha256').update(token).digest('hex'),
+            usedAt: null
         })
 
         if(!auth_code){

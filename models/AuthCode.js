@@ -17,7 +17,10 @@ const AuthCodeSchema = new mongoose.Schema({
     },
     scopes: [String],
     codeChallenge: String,
-    usedAt: Date,
+    usedAt: {
+        type: Date, 
+        default: null
+    },
     expiresAt: {
         type: Date,
         required: true,
