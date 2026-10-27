@@ -5,6 +5,8 @@ const User = require('../../models/User');
 const { logError } = require('../logs');
 const fs = require('fs');
 const Grant = require('../../models/Grant');
+const App = require('../../models/App')
+const RefreshTokens = require('../../models/RefreshTokens')
 
 function hashToken(token) {
     return crypto.createHash('sha256').update(token).digest('hex');
@@ -48,8 +50,8 @@ async function verifyToken(req, res, next) {
                 return res.status(403).json({ success: false, message: "Application access has been revoked." })
             }
 
-            if(decoded.appId !== String(session.appId)){
-                return res.status(403).json({ success: false, message: "Invalid aplication token."})
+            if (decoded.appId !== String(session.appId)) {
+                return res.status(403).json({ success: false, message: "Invalid aplication token." })
             }
 
             req.grant = grant
@@ -109,15 +111,15 @@ async function verifyRefreshToken(req, res, next) {
 function signAccessToken(userId, sessionId, appId = null) {
     return jwt.sign({ id: userId, sessionId, ...(appId ? { appId: String(appId) } : {}) }, process.env.JWT_SECRET, { expiresIn: "1h" });
 }
+const refreshCookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.COOKIE_SAME_SITE || 'lax',
+    path: '/'
+}
 
 function setRefreshCookie(res, refreshToken) {
-    res.cookie('refreshToken', refreshToken, {
-        /* httpOnly: false,
-         secure: true,
-         sameSite: 'Strict',
-         path: '/api/auth', */
-        maxAge: 7 * 24 * 60 * 60 * 1000
-    })
+    res.cookie('refreshToken', refreshToken, refreshCookieOptions)
 }
 
 async function issueSession(user, req, res, type = 'default', appId = null) {
@@ -138,7 +140,7 @@ async function issueSession(user, req, res, type = 'default', appId = null) {
 }
 
 async function issueAppTokens(user, req, appId, grant) {
-    const refreshToken = crypto.randomBytes(64).toString('hex');
+    const refreshToken = crypto.randomBytes(32).toString('hex');
     const session = await Session.create({
         userId: user._id,
         refreshToken: hashToken(refreshToken),
@@ -156,7 +158,7 @@ async function issueAppTokens(user, req, appId, grant) {
         expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
     });
     return {
-        accessToken: signAccessToken(user._id, session.id, appId),
+        accessToken: signAccessToken(user._id, null, appId),
         refreshToken
     };
 }
@@ -164,7 +166,12 @@ async function issueAppTokens(user, req, appId, grant) {
 async function notLoggedIn(req, res, next) {
     if (req.cookies.refreshToken) {
 
-        const session = await Session.exists({ refreshToken: hashToken(req.cookies.refreshToken) })
+        const session = await Session.exists({
+            refreshToken: hashToken(req.cookies.refreshToken),
+            revokedAt: null,
+            expiresAt: { $gt: new Date() },
+            appId: null
+        })
 
         if (session) {
             return res.redirect('/dashboard')
@@ -178,8 +185,14 @@ async function loggedIn(req, res, next) {
     if (!req.cookies.refreshToken) {
         return res.redirect('/')
     } else {
-        next()
+        const session = await Session.exists({
+            refreshToken: hashToken(req.cookies.refreshToken),
+            revokedAt: null,
+            expiresAt: { $gt: new Date() },
+            appId: null
+        })
+        return session ? next() : res.redirect('/login')
     }
 }
 
-module.exports = { issueAppTokens, hashToken, verifyToken, notLoggedIn, loggedIn, verifyRefreshToken, issueSession, setRefreshCookie, signAccessToken };
+module.exports = { refreshCookieOptions, issueAppTokens, hashToken, verifyToken, notLoggedIn, loggedIn, verifyRefreshToken, issueSession, setRefreshCookie, signAccessToken };

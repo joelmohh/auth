@@ -7,9 +7,30 @@ const User = require('../models/User');
 const Grant = require('../models/Grant');
 const Session = require('../models/Session')
 const RefreshTokens = require('../models/RefreshTokens')
+const AuthCode = require('../models/AuthCode')
 const { logError } = require('../modules/logs');
 const { encrypt, decrypt } = require('../modules/crypto');
 const { default: mongoose } = require('mongoose');
+
+
+function hashString(value) {
+    return crypto.createHash('sha256').update(value).digest('hex')
+}
+
+function validRedirectUri(value) {
+    try {
+        const url = new URL(value)
+        if (url.hash || value.includes('*') || url.hostname === '' || url.hostname.includes('*')) return false
+        if (url.protocol !== 'https:' && !['localhost', '127.0.0.1'].includes(url.hostname)) return false
+        return true
+    } catch {
+        return false
+    }
+}
+
+function validRedirectUris(values) {
+    return Array.isArray(values) && values.length <= 20 && values.every(validRedirectUri)
+}
 
 Router.get('/', verifyToken, async (req, res) => {
     try {
@@ -24,7 +45,7 @@ Router.get('/', verifyToken, async (req, res) => {
             return res.status(404).json({ success: false, message: "User not found" })
         }
 
-        const apps = await App.find({ ownerId: user._id }).select('ownerId name description clientId redirectUrls scopes providers.provider provider.enabled theme status')
+        const apps = await App.find({ ownerId: user._id }).select('ownerId name description clientId redirectUrls scopes providers.provider providers.enabled theme status')
 
         if (!apps) {
             return res.status(404).json({ success: true, message: "No apps found", data: [] })
@@ -58,9 +79,10 @@ Router.post('/', verifyToken, async (req, res) => {
         }
 
         const clientId = crypto.randomBytes(16).toString('hex')
-        const clientSecret = encrypt(crypto.randomBytes(64).toString('hex'))
+        const rawClientSecret = hashString(crypto.randomBytes(64).toString('hex'))
+        const clientSecret = hashString(rawClientSecret)
 
-        if (redirectUrls !== undefined && (!Array.isArray(redirectUrls)) || redirectUrls.some(url => !/^https?:\/\/\S+$/i.test(url))) {
+        if (redirectUrls !== undefined && !validRedirectUris(redirectUrls)) {
             return res.status(400).json({ success: false, message: "Invalid redirect URLs." })
         }
 
@@ -70,8 +92,8 @@ Router.post('/', verifyToken, async (req, res) => {
             description: description || '',
             clientId,
             clientSecret,
-            redirectUrls: redirectUrls,
-            scopes,
+            redirectUrls: redirectUrls || [],
+            scopes: scopes || [],
             providers: []
         })
 
@@ -79,7 +101,7 @@ Router.post('/', verifyToken, async (req, res) => {
             return res.status(418).json({ success: false, message: "Something went wrong." })
         }
 
-        app.clientSecret = decrypt(clientSecret)
+        app.clientSecret = rawClientSecret
 
         res.status(200).json({ success: true, message: "App created successfully", data: app })
 
@@ -129,13 +151,26 @@ Router.patch('/:id', verifyToken, async (req, res) => {
 
         const { name, description, redirectUrls, scopes, providers, theme } = req.body
 
+        if (redirectUrls !== undefined && !validRedirectUri(redirectUrls)) {
+            return res.status(400).json({ success: false, message: "Invalid redirect URLs." })
+        }
+        if (scopes !== undefined && (!Array.isArray(scopes) || scopes.some(scope => !['username', 'email', 'profile', 'phone', 'address', 'birthDate'].includes(scope)))) {
+            return res.status(400).json({ success: false, message: "Invalid socpes." })
+        }
+
+        const updates = {}
+        for (const [key, value] of Object.entries({ name, description, redirectUrls, scopes, providers, theme })) {
+            if (value !== undefined) updates[key] = value
+        }
+
+
         if (!name) {
             return res.status(403).json({ success: false, message: "Missing required field (name)." })
         }
 
         const app = await App.findOneAndUpdate(
             { _id: req.params.id, ownerId: user._id },
-            { $set: { name, description, redirectUrls, scopes, providers, theme } },
+            { $set: updates },
             { returnDocument: 'after', runValidators: true }
         )
 
@@ -170,8 +205,9 @@ Router.delete('/:id', verifyToken, async (req, res) => {
 
         await Promise.all([
             Grant.deleteMany({ appId: app._id }),
+            AuthCode.deleteMany({ appId: app._id }),
             Session.updateMany({ appId: app._id, revokedAt: null }, { $set: { revokedAt: new Date(), revokedBy: 'system' } }),
-            RefreshTokens.updateMany({ appId: app._id, revokedAt: null }, { $set: { revokedAt: new Date() } })
+            RefreshTokens.deleteMany({ appId: app._id })
         ])
 
         res.status(200).json({ success: true, message: "App deleted successfully", data: app })
@@ -210,6 +246,9 @@ Router.put('/:id/redirects', verifyToken, async (req, res) => {
 
         if (!app) {
             return res.status(404).json({ success: false, message: "No app found" })
+        }
+        if (!validRedirectUris(req.body.redirectUrls)) {
+            return res.status(400).json({ success: false, message: "Invalid redirect URLs." })
         }
         res.status(200).json({ success: true, message: "Redirect urls updated successfully." })
 
@@ -369,14 +408,14 @@ Router.post('/:id/secret/rotate', verifyToken, async (req, res) => {
         }
 
         const clientSecret = crypto.randomBytes(64).toString('hex')
-        const clientSecretEncrypted = encrypt(clientSecret)
+        const clientSecrectHash = hashString(clientSecret)
 
         const app = await App.updateOne({
             ownerId: req.user.id,
             _id: req.params.id
         }, {
             $set: {
-                clientSecret: clientSecretEncrypted,
+                clientSecret: clientSecrectHash,
                 clientSecretLastRotation: Date.now()
             }
         })
@@ -462,15 +501,11 @@ Router.get('/:id/users/:userId', verifyToken, async (req, res) => {
             return res.status(404).json({ success: false, message: "App not found" })
         }
 
-        const grant = await Grant.findOne({
-            appId: req.params.id,
-            userId: req.params.userId,
-            revokedAt: null,
-            bannedAt: null
-        })
-            .populate({ path: 'userId', select: FIELDS, match: { status: 'active' } })
-            .select('userId scopes -_id')
-            .lean()
+        const grant = await Grant.findOneAndUpdate(
+            { appId: req.params.id, userId: req.params.userId, revokedAt: null },
+            { $set: { revokedAt: new Date() } },
+            { new: true }
+        )
 
         if (!grant || !grant.userId) {
             return res.status(404).json({ success: false, message: "No user found" })

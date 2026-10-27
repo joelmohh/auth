@@ -23,7 +23,8 @@ const RefreshTokens = new mongoose.Schema({
     scopes: [String],
     rotatedFrom:{
         type: mongoose.Schema.Types.ObjectId, 
-        ref:"refreshTokens"
+        ref:"refreshTokens",
+        default: null
     },
     revokedAt: Date,
     expiresAt: {

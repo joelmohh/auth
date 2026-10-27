@@ -12,7 +12,6 @@ const GrantSchema = new mongoose.Schema({
     },
     scopes:[{type:String}],
     lastUsedAt: Date,
-    email: Date,
     revokedAt: Date,
     bannedAt: Date
 }, {timestamps: true})

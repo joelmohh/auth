@@ -21,7 +21,7 @@ const otpSchema = new mongoose.Schema({
         default: 0
     },
     maxTries:{type: Number, default: 5},
-    lastSentAt:{type: Date, default: Date.now()},
+    lastSentAt:{type: Date, default: Date.now},
     expiresAt:{type: Date, required: true, index: {expires: 0}}
 }, { timestamps: true });
 otpSchema.index({ userId: 1, purpose: 1}, {unique: true})

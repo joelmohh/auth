@@ -10,9 +10,9 @@ const Otp = require("../models/Otp");
 
 const { logError } = require("../modules/logs");
 const sendEmail = require("../modules/SMTP/send");
-const { issueSession, hashToken, setRefreshCookie, signAccessToken } = require("../modules/auth/session");
+const { refreshCookieOptions, issueSession, hashToken, setRefreshCookie, signAccessToken } = require("../modules/auth/session");
 
-async function createOtpAndSend(userId, email, purpose, res) {
+async function createOtpAndSend(userId, email, purpose) {
     try {
         const code = crypto.randomInt(100000, 1000000).toString()
         const otpExpiry = Date.now() + 10 * 60 * 1000;
@@ -23,7 +23,7 @@ async function createOtpAndSend(userId, email, purpose, res) {
         const otp = await Otp.findOne({ userId, purpose })
 
         if (otp) {
-            otp.code = code
+            otp.code = bcrypt.hash(code, 10)
             otp.expiresAt = new Date(otpExpiry)
             otp.purpose = purpose
             otp.lastSentAt = Date.now()
@@ -38,7 +38,7 @@ async function createOtpAndSend(userId, email, purpose, res) {
         }
         await Otp.create({
             userId,
-            code,
+            code: await bcrypt.hash(code, 10),
             purpose: purpose,
             expiresAt: new Date(otpExpiry),
             lastSentAt: Date.now()
@@ -52,7 +52,7 @@ async function createOtpAndSend(userId, email, purpose, res) {
 
     } catch (error) {
         logError(error)
-        return res.status(500).json({ success: false, message: "Internal server error." })
+        throw error
     }
 }
 
@@ -89,7 +89,7 @@ Router.post('/login', async (req, res) => {
         }
         if (!user.emailVerifiedAt) {
             await Otp.deleteMany({ userId: user._id });
-            await createOtpAndSend(user._id, email, "verify_email", res);
+            await createOtpAndSend(user._id, email, "verify_email");
             return res.status(403).json({ success: false, message: "Account not verified. Please verify your account.", verified: false });
         }
 
@@ -106,10 +106,10 @@ Router.post('/login', async (req, res) => {
 
 Router.post('/verify-otp', async (req, res) => {
     try {
-        const { email, otp, purpose, client_id, redirectURL } = req.body;
+        const { email, otp, purpose } = req.body;
 
 
-        if (!email || !otp || !purpose || purpose === null) {
+        if (!email || !otp || !purpose || !["verify_email", "login"].includes(purpose)) {
             return res.status(400).json({ success: false, message: "Email, OTP and purpose are required." });
         }
 
@@ -141,7 +141,7 @@ Router.post('/verify-otp', async (req, res) => {
             return res.status(429).json({ success: false, message: "Too many attempts. Please request a new code" })
         }
 
-        if (existingOtp.code !== otp) {
+        if (!await bcrypt.compare(String(otp), existingOtp.code)) {
             existingOtp.tries += 1
             await existingOtp.save()
             return res.status(400).json({ success: false, message: "Invalid OTP." });
@@ -194,7 +194,7 @@ Router.post('/resend-otp', async (req, res) => {
         }
 
         await Otp.deleteMany({ userId: user._id, purpose: purpose });
-        await createOtpAndSend(user._id, email, purpose, res);
+        await createOtpAndSend(user._id, email, purpose);
 
         res.status(200).json({ success: true, message: "OTP sent successfully." });
 
@@ -206,13 +206,17 @@ Router.post('/resend-otp', async (req, res) => {
 
 Router.post("/signup", async (req, res) => {
     try {
-        const { password, termsAccepted, emailVerifiedAt, ...rest } = req.body
-        if(!password || !rest.email || !rest.username){
-            return res.status(400).json({ success: false, message: "Missing required fields."})
+        const { password, termsAccepted, email, username, ...provided } = req.body
+        const rest = { email, username }
+        for (const field of ['displayName', 'avatarUrl', 'bannerUrl', 'bio', 'locale', 'phone', 'address', 'birthDate']) {
+            if (provided[field] !== undefined) rest[field] = provided[field]
+        }
+        if (!password || !rest.email || !rest.username) {
+            return res.status(400).json({ success: false, message: "Missing required fields." })
         }
 
-        if(!termsAccepted){
-            return res.status(401).json({ success: false, message: "You have to accept the terms and conditions"})
+        if (!termsAccepted) {
+            return res.status(401).json({ success: false, message: "You have to accept the terms and conditions" })
         }
 
         const user = await User.findOne({ $or: [{ username: rest.username }, { email: rest.email }] })
@@ -240,7 +244,7 @@ Router.post("/signup", async (req, res) => {
             return res.status(500).json({ success: false, message: "Failed to create user." });
         }
 
-        await createOtpAndSend(newUser._id, newUser.email, "verify_email", res);
+        await createOtpAndSend(newUser._id, newUser.email, "verify_email");
 
         res.status(201).json({
             success: true,
@@ -274,7 +278,7 @@ Router.post('/logout', async (req, res) => {
         session.revokedAt = new Date();
         await session.save();
 
-        res.clearCookie('refreshToken', { path: '/api/auth' });
+        res.clearCookie('refreshToken', refreshCookieOptions);
         res.status(200).json({ success: true, message: "Logged out successfully." });
 
     } catch (error) {
@@ -298,7 +302,7 @@ Router.get('/logout', async (req, res) => {
         session.revokedAt = new Date();
         await session.save();
 
-        res.clearCookie('refreshToken'/*,  { path: '/api/auth' }*/);
+        res.clearCookie('refreshToken', refreshCookieOptions);
         res.redirect('/')
 
     } catch (error) {
@@ -339,7 +343,7 @@ Router.post('/refresh', async (req, res) => {
             });
 
             if (!reused) {
-                res.clearCookie('refreshToken', { path: '/api/auth' });
+                res.clearCookie('refreshToken', refreshCookieOptions);
                 return res.status(401).json({ success: false, message: "Session not found" });
             }
 
@@ -368,7 +372,7 @@ Router.post('/refresh', async (req, res) => {
                 { $set: { revokedAt: new Date(), revokedBy: 'reuse_detected' } }
             );
 
-            res.clearCookie('refreshToken', { path: '/api/auth' });
+            res.clearCookie('refreshToken', refreshCookieOptions);
             return res.status(401).json({ success: false, message: "Invalid or expired session." });
         }
 
@@ -379,7 +383,7 @@ Router.post('/refresh', async (req, res) => {
             session.revokedAt = new Date();
             await session.save();
 
-            res.clearCookie('refreshToken', { path: '/api/auth' });
+            res.clearCookie('refreshToken', refreshCookieOptions);
             return res.status(401).json({ success: false, message: "Invalid or expired session." });
         }
 
@@ -417,7 +421,7 @@ Router.post('/forgot-password', async (req, res) => {
             return res.status(403).json({ success: false, message: "Authorization error, account not active" })
         }
 
-        await createOtpAndSend(user._id, email, "password_reset", res)
+        await createOtpAndSend(user._id, email, "password_reset")
 
         res.status(200).json({ success: true, message: "If this email exists you will recieve a code." })
 
@@ -447,30 +451,26 @@ Router.post('/reset-password', async (req, res) => {
         if (user.status !== 'active') {
             return res.status(403).json({ success: false, message: "Authorization error, account not active" })
         }
-        const findOtp = await Otp.findOneAndUpdate({
+        const findOtp = await Otp.findOne({
             userId: user._id,
             purpose: 'password_reset'
-        },{ $inc: { tries: 1 } })
+        }).select('+code')
 
-        if(!findOtp){
-            return res.status(404).json({success: false, message: "Invalid otp"})
+        if (!findOtp) {
+            return res.status(404).json({ success: false, message: "Invalid otp" })
         }
-        if(findOtp.expiresAt < Date.now()){
-            return res.status(401).json({success: true, message: "Expired otp, request a new one."})
+        if (findOtp.expiresAt < Date.now()) {
+            return res.status(401).json({ success: true, message: "Expired otp, request a new one." })
         }
-        if(findOtp.tries > findOtp.maxTries){
-            return res.status(401).json({ success: false, message: "You have reached the maximun attempt"})
+        if (findOtp.tries >= findOtp.maxTries) {
+            return res.status(401).json({ success: false, message: "You have reached the maximun attempt" })
         }
 
-        const otp = await Otp.findOneAndDelete({
-            userId: user._id,
-            code: code,
-            purpose: 'password_reset'
-        })
-
-        if (!otp) {
+        if (!await bcrypt.compare(String(code), findOtp.code)) {
+            await Otp.updateOne({ _id: findOtp._id }, { $inc: { tries: 1 } })
             return res.status(401).json({ success: false, message: "Invalid or missing otp code" })
         }
+        await Otp.deleteOne({ _id: findOtp._id })
 
         const sessions = await Session.find({ userId: user._id })
 
@@ -485,7 +485,7 @@ Router.post('/reset-password', async (req, res) => {
                 }
             );
         }
-
+        
         const hashedPassword = await bcrypt.hash(newPassword, 10);
 
         user.password = hashedPassword
@@ -498,7 +498,6 @@ Router.post('/reset-password', async (req, res) => {
         res.status(500).json({ success: false, message: "Internal server error." })
     }
 })
-
 Router.get('/:provider', async (req, res) => {
     try {
         let provider = req.params.provider
