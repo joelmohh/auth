@@ -125,7 +125,7 @@ const refreshCookieOptions = {
     secure: process.env.NODE_ENV === 'production',
     sameSite: process.env.COOKIE_SAME_SITE || 'lax',
     path: '/',
-    maxAge: 7 * 23 * 60 * 60 * 1000
+    maxAge: 7 * 24 * 60 * 60 * 1000
 }
 
 function setRefreshCookie(res, refreshToken) {

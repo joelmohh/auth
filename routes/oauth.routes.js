@@ -10,13 +10,8 @@ const AuthCode = require('../models/AuthCode')
 
 const { logError } = require('../modules/logs')
 const { verifyToken, hashToken, issueAppTokens } = require('../modules/auth/session')
-const { default: mongoose } = require('mongoose')
-const { issueSession } = require('../modules/auth/session')
-const { validationModule } = require('../modules/validator')
 const CODE_TTL = 10 * 60 * 1000
 
-// Common functions
-Router.use(validationModule)
 
 function requestedScopes(value) {
     if (Array.isArray(value)) return value
@@ -71,7 +66,7 @@ Router.get('/authorize', async (req, res) => {
         }
 
         if (!app.redirectUrls?.includes(redirect_uri)) {
-            return res.status(400).json({ success: true, message: "Incorrect redirec_url." })
+            return res.status(400).json({ success: false, message: "Incorrect redirec_url." })
         }
         if (code_challenge && code_challenge_method !== 'S256') {
             return res.status(400).json({ success: false, message: 'Only S256 PKCE is supported.' })

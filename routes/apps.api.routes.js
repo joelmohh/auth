@@ -1,7 +1,7 @@
 const Router = require('express').Router();
 const crypto = require('crypto')
 
-const { verifyPortalToken, verifyToken } = require('../modules/auth/session');
+const { verifyPortalToken } = require('../modules/auth/session');
 const App = require('../models/App');
 const User = require('../models/User');
 const Grant = require('../models/Grant');
@@ -9,7 +9,7 @@ const Session = require('../models/Session')
 const RefreshTokens = require('../models/RefreshTokens')
 const AuthCode = require('../models/AuthCode')
 const { logError } = require('../modules/logs');
-const { encrypt, decrypt } = require('../modules/crypto');
+const { encrypt } = require('../modules/crypto');
 const { default: mongoose } = require('mongoose');
 
 
@@ -32,7 +32,7 @@ function validRedirectUris(values) {
     return Array.isArray(values) && values.length <= 20 && values.every(validRedirectUri)
 }
 
-Router.get('/', verifyToken, async (req, res) => {
+Router.get('/', verifyPortalToken, async (req, res) => {
     try {
 
         if (!req.user) {
@@ -59,7 +59,7 @@ Router.get('/', verifyToken, async (req, res) => {
     }
 })
 
-Router.post('/', verifyToken, async (req, res) => {
+Router.post('/', verifyPortalToken, async (req, res) => {
     try {
 
         if (!req.user) {
@@ -111,7 +111,7 @@ Router.post('/', verifyToken, async (req, res) => {
     }
 })
 
-Router.get('/:id', verifyToken, async (req, res) => {
+Router.get('/:id', verifyPortalToken, async (req, res) => {
     try {
 
         if (!req.user) {
@@ -136,7 +136,7 @@ Router.get('/:id', verifyToken, async (req, res) => {
     }
 })
 
-Router.patch('/:id', verifyToken, async (req, res) => {
+Router.patch('/:id', verifyPortalToken, async (req, res) => {
     try {
 
         if (!req.user) {
@@ -181,7 +181,7 @@ Router.patch('/:id', verifyToken, async (req, res) => {
     }
 })
 
-Router.delete('/:id', verifyToken, async (req, res) => {
+Router.delete('/:id', verifyPortalToken, async (req, res) => {
     try {
 
         if (!req.user) {
@@ -213,7 +213,7 @@ Router.delete('/:id', verifyToken, async (req, res) => {
     }
 })
 
-Router.put('/:id/redirects', verifyToken, async (req, res) => {
+Router.put('/:id/redirects', verifyPortalToken, async (req, res) => {
     try {
 
         if (!req.params.id || !mongoose.isValidObjectId(req.params.id)) {
@@ -253,7 +253,7 @@ Router.put('/:id/redirects', verifyToken, async (req, res) => {
     }
 })
 
-Router.put('/:id/scopes', verifyToken, async (req, res) => {
+Router.put('/:id/scopes', verifyPortalToken, async (req, res) => {
     try {
 
         if (!req.params.id || !mongoose.isValidObjectId(req.params.id)) {
@@ -277,7 +277,7 @@ Router.put('/:id/scopes', verifyToken, async (req, res) => {
     }
 })
 
-Router.patch('/:id/appearance', verifyToken, async (req, res) => {
+Router.patch('/:id/appearance', verifyPortalToken, async (req, res) => {
     try {
 
         if (!req.params.id || !mongoose.isValidObjectId(req.params.id)) {
@@ -329,7 +329,7 @@ Router.patch('/:id/appearance', verifyToken, async (req, res) => {
     }
 })
 
-Router.get('/:id/providers', verifyToken, async (req, res) => {
+Router.get('/:id/providers', verifyPortalToken, async (req, res) => {
     try {
 
         if (!req.params.id || !mongoose.isValidObjectId(req.params.id)) {
@@ -353,7 +353,7 @@ Router.get('/:id/providers', verifyToken, async (req, res) => {
     }
 })
 
-Router.put('/:id/providers/:provider', verifyToken, async (req, res) => {
+Router.put('/:id/providers/:provider', verifyPortalToken, async (req, res) => {
     try {
 
         if (!req.params.id || !mongoose.isValidObjectId(req.params.id)) {
@@ -395,7 +395,7 @@ Router.put('/:id/providers/:provider', verifyToken, async (req, res) => {
     }
 })
 
-Router.post('/:id/secret/rotate', verifyToken, async (req, res) => {
+Router.post('/:id/secret/rotate', verifyPortalToken, async (req, res) => {
     try {
 
         if (!req.params.id || !mongoose.isValidObjectId(req.params.id)) {
@@ -448,7 +448,7 @@ function pickByScopes(user, scopes) {
     return out
 }
 
-Router.get('/:id/users', verifyToken, async (req, res) => {
+Router.get('/:id/users', verifyPortalToken, async (req, res) => {
     try {
 
         if (!req.params.id || !mongoose.isValidObjectId(req.params.id)) {
@@ -485,7 +485,7 @@ Router.get('/:id/users', verifyToken, async (req, res) => {
     }
 })
 
-Router.get('/:id/users/:userId', verifyToken, async (req, res) => {
+Router.get('/:id/users/:userId', verifyPortalToken, async (req, res) => {
     try {
         if (!mongoose.isValidObjectId(req.params.id) || !mongoose.isValidObjectId(req.params.userId)) {
             return res.status(400).json({ success: false, message: "Malformed request url" })
@@ -500,7 +500,7 @@ Router.get('/:id/users/:userId', verifyToken, async (req, res) => {
             appId: req.params.id,
             userId: req.params.userId,
             revokedAt: null, 
-            bannerAt: null
+            bannedAt: null
         }).populate({ path: 'userId', select: FIELDS, match: { status: 'active' } })
 
         if (!grant || !grant.userId) {
@@ -514,7 +514,7 @@ Router.get('/:id/users/:userId', verifyToken, async (req, res) => {
     }
 })
 
-Router.delete('/:id/users/:userId', verifyToken, async (req, res) => {
+Router.delete('/:id/users/:userId', verifyPortalToken, async (req, res) => {
     try {
 
         if (!mongoose.isValidObjectId(req.params.id) || !mongoose.isValidObjectId(req.params.userId)) {
@@ -549,7 +549,7 @@ Router.delete('/:id/users/:userId', verifyToken, async (req, res) => {
     }
 })
 
-Router.post('/:id/users/:userId/ban', verifyToken, async (req, res) => {
+Router.post('/:id/users/:userId/ban', verifyPortalToken, async (req, res) => {
     try {
 
         if (!mongoose.isValidObjectId(req.params.id) || !mongoose.isValidObjectId(req.params.userId)) {
