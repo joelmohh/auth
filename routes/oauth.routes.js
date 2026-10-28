@@ -11,10 +11,12 @@ const AuthCode = require('../models/AuthCode')
 const { logError } = require('../modules/logs')
 const { verifyToken, hashToken, issueAppTokens } = require('../modules/auth/session')
 const { default: mongoose } = require('mongoose')
-const { decrypt } = require('../modules/crypto')
 const { issueSession } = require('../modules/auth/session')
+const { validationModule } = require('../modules/validator')
+const CODE_TTL = 10 * 60 * 1000
 
 // Common functions
+Router.use(validationModule)
 
 function requestedScopes(value) {
     if (Array.isArray(value)) return value
@@ -34,9 +36,8 @@ async function findClient(clientId, clientSecret) {
     const app = await App.findOne({ clientId, status: 'active' }).select('+clientSecret')
     if (!app || !clientSecret) return null
     try {
-        const expected = decrypt(app.clientSecret)
-        const provided = Buffer.from(clientSecret)
-        const actual = Buffer.from(expected)
+        const provided = Buffer.from(hashToken(clientSecret), 'hex')
+        const actual = Buffer.from(app.clientSecret, 'hex')
 
         if (provided.length !== actual.length || !crypto.timingSafeEqual(provided, actual)) return null
 
@@ -58,14 +59,14 @@ function verifyPkce(verifier, challenge, method) {
 Router.get('/authorize', async (req, res) => {
     try {
 
-        const { client_id, redirect_uri, scope, state, code_challenge, code_challenge_method } = req.query
+        const { client_id, redirect_uri, response_type, scope, state, code_challenge, code_challenge_method } = req.query
 
         if (!client_id || !redirect_uri || !scope) {
             return res.status(403).json({ success: false, message: "Missing required query params" })
         }
 
         const app = await App.findOne({ clientId: client_id, status: 'active' })
-        if (!clientId || !redirectUri || responseType !== 'code' || !scope || !app) {
+        if (!response_type || response_type !== 'code' || !scope || !app) {
             return res.status(app ? 400 : 404).json({ success: false, message: 'Invalid authorization request.' })
         }
 
@@ -98,29 +99,29 @@ Router.get('/authorize', async (req, res) => {
     }
 })
 
-Router.post('/authorize', verifyToken, async (req, res) => {
+Router.post('/authorize', require('../modules/auth/session').verifyPortalToken, async (req, res) => {
     try {
 
         const { client_id, redirect_uri, scope, state, code_challenge, code_challenge_method, decision } = req.body
 
-        const app = await App.findOne({ client_id, status: 'active' })
+        const app = await App.findOne({ clientId: client_id, status: 'active' })
         if (!app || !redirect_uri || !app.redirectUrls?.includes(redirect_uri)) {
             return res.status(400).json({ success: false, message: 'Invalid authorization request.' })
         }
         const scopes = requestedScopes(scope)
         if (!scopes.length || scopes.some(item => !app.scopes.includes(item))) {
-            return redirectWithError(res, redirect_uri, state, 'invalid_scope', 'Requested scope is not enabled.')
+            return errorRedirect(res, redirect_uri, state, 'invalid_scope', 'Requested scope is not enabled.')
         }
         if (decision === 'deny') {
-            return redirectWithError(res, redirect_uri, state, 'access_denied', 'The user denied the request.')
+            return errorRedirect(res, redirect_uri, state, 'access_denied', 'The user denied the request.')
         }
         if (code_challenge_method && code_challenge_method !== 'S256') {
-            return redirectWithError(res, redirect_uri, state, 'invalid_request', 'Only S256 PKCE is supported.')
+            return errorRedirect(res, redirect_uri, state, 'invalid_request', 'Only S256 PKCE is supported.')
         }
         const user = await User.findOne({ _id: req.user.id, status: 'active' })
         if (!user) return res.status(404).json({ success: false, message: 'User not found.' })
         const existingGrant = await Grant.findOne({ userId: user._id, appId: app._id })
-        if (existingGrant?.bannedAt) return redirectWithError(res, redirect_uri, state, 'access_denied', 'Access to this app is blocked.')
+        if (existingGrant?.bannedAt) return errorRedirect(res, redirect_uri, state, 'access_denied', 'Access to this app is blocked.')
         const grant = await Grant.findOneAndUpdate(
             { userId: user._id, appId: app._id },
             { $set: { scopes, lastUsedAt: new Date(), revokedAt: null }, $setOnInsert: { bannedAt: null } },
@@ -200,11 +201,28 @@ Router.post('/token', async (req, res) => {
                 { $set: { revokedAt: new Date() } },
                 { new: true }
             )
-            if (!current) return res.status(400).json({ error: 'invalid_grant' })
+            if (!current) {
+                const reused = await RefreshTokens.findOne({ refreshToken: hashToken(refreshToken), appId: app._id })
+                if (reused?.revokedAt) {
+                    await RefreshTokens.updateMany(
+                        { grantId: reused.grantId, appId: app._id, revokedAt: null },
+                        { $set: { revokedAt: new Date() } }
+                    )
+                    await Session.updateMany(
+                        { appId: app._id, userId: reused.userId, revokedAt: null },
+                        { $set: { revokedAt: new Date(), revokedBy: 'reuse_detected' } }
+                    )
+                }
+                return res.status(400).json({ error: 'invalid_grant' })
+            }
+            await Session.updateOne(
+                { appId: app._id, userId: current.userId, refreshToken: hashToken(refreshToken), revokedAt: null },
+                { $set: { revokedAt: new Date(), revokedBy: 'system' } }
+            )
             const grant = await Grant.findOne({ _id: current.grantId, appId: app._id, userId: current.userId, revokedAt: null, bannedAt: null })
             const user = await User.findOne({ _id: current.userId, status: 'active' })
             if (!grant || !user) return res.status(400).json({ error: 'invalid_grant' })
-            const tokens = await issueAppTokens(user, req, app._id, grant)
+            const tokens = await issueAppTokens(user, req, app._id, grant, current._id)
             return res.json({ access_token: tokens.accessToken, token_type: 'Bearer', expires_in: 3600, refresh_token: tokens.refreshToken, scope: current.scopes.join(' ') })
         }
         return res.status(400).json({ error: 'unsupported_grant_type' })
@@ -259,5 +277,4 @@ Router.post('/revoke', async (req, res) => {
         res.status(500).json({ error: 'server_error' })
     }
 })
-
 module.exports = Router

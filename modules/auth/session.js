@@ -12,6 +12,15 @@ function hashToken(token) {
     return crypto.createHash('sha256').update(token).digest('hex');
 }
 
+async function verifyPortalToken(req, res, next){
+    await verifyToken(req, res, () => {
+        if(req.session?.appId) {
+            return res.status(403).json({success: false, message: "Portal access requires a portal session."})
+        }
+        next()
+    })
+}
+
 async function verifyToken(req, res, next) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -115,7 +124,8 @@ const refreshCookieOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: process.env.COOKIE_SAME_SITE || 'lax',
-    path: '/'
+    path: '/',
+    maxAge: 7 * 23 * 60 * 60 * 1000
 }
 
 function setRefreshCookie(res, refreshToken) {
@@ -139,7 +149,7 @@ async function issueSession(user, req, res, type = 'default', appId = null) {
     return { accessToken: signAccessToken(user._id, session.id, appId), refreshToken: refreshToken }
 }
 
-async function issueAppTokens(user, req, appId, grant) {
+async function issueAppTokens(user, req, appId, grant, rotatedFrom = null) {
     const refreshToken = crypto.randomBytes(32).toString('hex');
     const session = await Session.create({
         userId: user._id,
@@ -155,10 +165,11 @@ async function issueAppTokens(user, req, appId, grant) {
         appId,
         userId: user._id,
         scopes: grant.scopes,
+        rotatedFrom,
         expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
     });
     return {
-        accessToken: signAccessToken(user._id, null, appId),
+        accessToken: signAccessToken(user._id, session.id, appId),
         refreshToken
     };
 }
@@ -195,4 +206,4 @@ async function loggedIn(req, res, next) {
     }
 }
 
-module.exports = { refreshCookieOptions, issueAppTokens, hashToken, verifyToken, notLoggedIn, loggedIn, verifyRefreshToken, issueSession, setRefreshCookie, signAccessToken };
+module.exports = { refreshCookieOptions, issueAppTokens, hashToken, verifyToken, verifyPortalToken, notLoggedIn, loggedIn, verifyRefreshToken, issueSession, setRefreshCookie, signAccessToken };

@@ -7,7 +7,7 @@ const AuthCode = require('../models/AuthCode')
 const RefreshTokens = require('../models/RefreshTokens')
 const App = require('../models/App')
 
-const { verifyToken } = require("../modules/auth/session")
+const { verifyPortalToken: verifyToken } = require("../modules/auth/session")
 const { logError } = require('../modules/logs')
 const { default: mongoose } = require("mongoose")
 
@@ -255,12 +255,14 @@ Router.delete('/authorizations/:appId', verifyToken, async (req, res) => {
 Router.get('/export', verifyToken, async (req, res) => {
     try {
 
-        const user = await User.findById(req.user.id).select('-password -__v').lean()
+        const user = await User.findById(req.user.id)
+            .select('username email emailVerifiedAt profile phone address birthDate status createdAt updatedAt')
+            .lean()
         if (!user) {
             return res.status(404).json({ success: false, message: 'User not found.' })
         }
 
-        res.json({ success: true, data: { ...user, sessions: undefined } })
+        res.json({ success: true, data: user })
 
     } catch (error) {
         logError(error)

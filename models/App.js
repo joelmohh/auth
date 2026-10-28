@@ -27,12 +27,6 @@ const appSchema = new mongoose.Schema({
         unique: true,
         select: false
     },
-    clientSecrectHash:{
-        type: String,
-        required: true,
-        select: false,
-        index: true
-    },
     clientSecretLastRotation:{
         type: Date,
         default: Date.now

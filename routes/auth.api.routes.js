@@ -23,7 +23,7 @@ async function createOtpAndSend(userId, email, purpose) {
         const otp = await Otp.findOne({ userId, purpose })
 
         if (otp) {
-            otp.code = bcrypt.hash(code, 10)
+            otp.code = await bcrypt.hash(code, 10)
             otp.expiresAt = new Date(otpExpiry)
             otp.purpose = purpose
             otp.lastSentAt = Date.now()
@@ -32,7 +32,7 @@ async function createOtpAndSend(userId, email, purpose) {
             await otp.save()
                 .then(() => {
                     console.log(`OTP for user ${userId} is ${code}. It will expire in 10 minutes.`);
-                    // sendEmail(email, "Your OTP Code", `<p>Your OTP code is: <strong>${code}</strong></p><p>This code will expire in 10 minutes.</p>`);
+                    // await sendEmail(email, "Your OTP Code", `<p>Your OTP code is: <strong>${code}</strong></p><p>This code will expire in 10 minutes.</p>`);
                 });
             return { success: true, messsage: "Otp code send successfully." }
         }
@@ -44,7 +44,7 @@ async function createOtpAndSend(userId, email, purpose) {
             lastSentAt: Date.now()
         }).then(() => {
             console.log(`OTP for user ${userId} is ${code}. It will expire in 10 minutes.`);
-            // sendEmail(email, "Your OTP Code", `<p>Your OTP code is: <strong>${code}</strong></p><p>This code will expire in 10 minutes.</p>`);
+            // await sendEmail(email, "Your OTP Code", `<p>Your OTP code is: <strong>${code}</strong></p><p>This code will expire in 10 minutes.</p>`);
         });
 
         return { success: true, messsage: "Otp code send successfully." }

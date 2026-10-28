@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Authorize <%= app.name %></title>
+</head>
+<body>
+    <main>
+        <h1>Authorize <%= app.name %></h1>
+        <p>This application requests access to: <%= scopes.join(', ') %></p>
+        <form method="post" action="/oauth/authorize">
+            <input type="hidden" name="client_id" value="<%= client_id %>">
+            <input type="hidden" name="redirect_uri" value="<%= redirect_uri %>">
+            <input type="hidden" name="scope" value="<%= scopes.join(' ') %>">
+            <input type="hidden" name="state" value="<%= state %>">
+            <input type="hidden" name="code_challenge" value="<%= code_challenge %>">
+            <input type="hidden" name="code_challenge_method" value="<%= code_challenge_method %>">
+            <button type="submit" name="decision" value="allow">Allow</button>
+            <button type="submit" name="decision" value="deny">Deny</button>
+        </form>
+    </main>
+</body>
+</html>

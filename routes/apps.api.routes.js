@@ -1,7 +1,7 @@
 const Router = require('express').Router();
 const crypto = require('crypto')
 
-const { verifyToken } = require('../modules/auth/session');
+const { verifyPortalToken, verifyToken } = require('../modules/auth/session');
 const App = require('../models/App');
 const User = require('../models/User');
 const Grant = require('../models/Grant');
@@ -151,7 +151,7 @@ Router.patch('/:id', verifyToken, async (req, res) => {
 
         const { name, description, redirectUrls, scopes, providers, theme } = req.body
 
-        if (redirectUrls !== undefined && !validRedirectUri(redirectUrls)) {
+        if (redirectUrls !== undefined && !validRedirectUris(redirectUrls)) {
             return res.status(400).json({ success: false, message: "Invalid redirect URLs." })
         }
         if (scopes !== undefined && (!Array.isArray(scopes) || scopes.some(scope => !['username', 'email', 'profile', 'phone', 'address', 'birthDate'].includes(scope)))) {
@@ -161,11 +161,6 @@ Router.patch('/:id', verifyToken, async (req, res) => {
         const updates = {}
         for (const [key, value] of Object.entries({ name, description, redirectUrls, scopes, providers, theme })) {
             if (value !== undefined) updates[key] = value
-        }
-
-
-        if (!name) {
-            return res.status(403).json({ success: false, message: "Missing required field (name)." })
         }
 
         const app = await App.findOneAndUpdate(
@@ -408,14 +403,14 @@ Router.post('/:id/secret/rotate', verifyToken, async (req, res) => {
         }
 
         const clientSecret = crypto.randomBytes(64).toString('hex')
-        const clientSecrectHash = hashString(clientSecret)
+        const clientSecretHash = hashString(clientSecret)
 
         const app = await App.updateOne({
             ownerId: req.user.id,
             _id: req.params.id
         }, {
             $set: {
-                clientSecret: clientSecrectHash,
+                clientSecret: clientSecretHash,
                 clientSecretLastRotation: Date.now()
             }
         })
@@ -501,11 +496,12 @@ Router.get('/:id/users/:userId', verifyToken, async (req, res) => {
             return res.status(404).json({ success: false, message: "App not found" })
         }
 
-        const grant = await Grant.findOneAndUpdate(
-            { appId: req.params.id, userId: req.params.userId, revokedAt: null },
-            { $set: { revokedAt: new Date() } },
-            { new: true }
-        )
+        const grant = await Grant.findOne({
+            appId: req.params.id,
+            userId: req.params.userId,
+            revokedAt: null, 
+            bannerAt: null
+        }).populate({ path: 'userId', select: FIELDS, match: { status: 'active' } })
 
         if (!grant || !grant.userId) {
             return res.status(404).json({ success: false, message: "No user found" })
@@ -530,7 +526,11 @@ Router.delete('/:id/users/:userId', verifyToken, async (req, res) => {
             return res.status(404).json({ success: false, message: "App not found" })
         }
 
-        const grant = await Grant.findOneAndDelete({ appId: req.params.id, userId: req.params.userId })
+         const grant = await Grant.findOneAndUpdate(
+            { appId: req.params.id, userId: req.params.userId, revokedAt: null },
+            { $set: { revokedAt: new Date() } },
+            { new: true }
+        )
 
         if (!grant) {
             return res.status(404).json({ success: false, message: "User not found" })
@@ -567,8 +567,7 @@ Router.post('/:id/users/:userId/ban', verifyToken, async (req, res) => {
         },
             {
                 $set: {
-                    bannedAt: new Date(),
-                    revokedAt: new Date()
+                    bannedAt: new Date()
                 }
             },
             {
