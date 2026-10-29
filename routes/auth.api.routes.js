@@ -23,7 +23,7 @@ async function createOtpAndSend(userId, email, purpose) {
         const otp = await Otp.findOne({ userId, purpose })
 
         if (otp) {
-            otp.code = await bcrypt.hash(code, 10)
+            otp.otpCode = await bcrypt.hash(code, 10)
             otp.expiresAt = new Date(otpExpiry)
             otp.purpose = purpose
             otp.lastSentAt = Date.now()
@@ -32,19 +32,19 @@ async function createOtpAndSend(userId, email, purpose) {
             await otp.save()
                 .then(() => {
                     console.log(`OTP for user ${userId} is ${code}. It will expire in 10 minutes.`);
-                    // await sendEmail(email, "Your OTP Code", `<p>Your OTP code is: <strong>${code}</strong></p><p>This code will expire in 10 minutes.</p>`);
+                    // sendEmail(email, "Your OTP Code", `<p>Your OTP code is: <strong>${code}</strong></p><p>This code will expire in 10 minutes.</p>`);
                 });
             return { success: true, messsage: "Otp code send successfully." }
         }
         await Otp.create({
             userId,
-            code: await bcrypt.hash(code, 10),
+            otpCode: await bcrypt.hash(code, 10),
             purpose: purpose,
             expiresAt: new Date(otpExpiry),
             lastSentAt: Date.now()
         }).then(() => {
             console.log(`OTP for user ${userId} is ${code}. It will expire in 10 minutes.`);
-            // await sendEmail(email, "Your OTP Code", `<p>Your OTP code is: <strong>${code}</strong></p><p>This code will expire in 10 minutes.</p>`);
+            // sendEmail(email, "Your OTP Code", `<p>Your OTP code is: <strong>${code}</strong></p><p>This code will expire in 10 minutes.</p>`);
         });
 
         return { success: true, messsage: "Otp code send successfully." }
@@ -126,7 +126,7 @@ Router.post('/verify-otp', async (req, res) => {
             userId: user._id,
             purpose,
             expiresAt: { $gt: new Date() }
-        }).select("+code")
+        }).select("+otpCode")
 
         if (!existingOtp) {
             return res.status(404).json({ success: false, message: "OTP expired or not found. Please request a new one." });
@@ -141,7 +141,7 @@ Router.post('/verify-otp', async (req, res) => {
             return res.status(429).json({ success: false, message: "Too many attempts. Please request a new code" })
         }
 
-        if (!await bcrypt.compare(String(otp), existingOtp.code)) {
+        if (!await bcrypt.compare(String(otp), existingOtp.otpCode)) {
             existingOtp.tries += 1
             await existingOtp.save()
             return res.status(400).json({ success: false, message: "Invalid OTP." });
@@ -433,9 +433,9 @@ Router.post('/forgot-password', async (req, res) => {
 
 Router.post('/reset-password', async (req, res) => {
     try {
-        const { email, code, confirmPassword, newPassword } = req.body
+        const { email, otp, confirmPassword, newPassword } = req.body
 
-        if (!email || !code || !confirmPassword || !newPassword) {
+        if (!email || !otp || !confirmPassword || !newPassword) {
             return res.status(401).json({ success: false, message: "Missing required fields" })
         }
 
@@ -454,7 +454,7 @@ Router.post('/reset-password', async (req, res) => {
         const findOtp = await Otp.findOne({
             userId: user._id,
             purpose: 'password_reset'
-        }).select('+code')
+        }).select('+otpCode')
 
         if (!findOtp) {
             return res.status(404).json({ success: false, message: "Invalid otp" })
@@ -466,7 +466,7 @@ Router.post('/reset-password', async (req, res) => {
             return res.status(401).json({ success: false, message: "You have reached the maximun attempt" })
         }
 
-        if (!await bcrypt.compare(String(code), findOtp.code)) {
+        if (!await bcrypt.compare(String(otp), findOtp.otpCode)) {
             await Otp.updateOne({ _id: findOtp._id }, { $inc: { tries: 1 } })
             return res.status(401).json({ success: false, message: "Invalid or missing otp code" })
         }
