@@ -15,7 +15,9 @@ mongoose.connect(process.env.MONGO_URI)
     .catch((err) => console.error('[ERROR] MongoDB connection error:', err));
 
 const app = express();
+app.disable('x-powered-by')
 app.use(express.json());
+app.use(express.urlencoded({ extended: false}))
 app.use((req, res, next) => {
     req.body ??= {}
     next()
