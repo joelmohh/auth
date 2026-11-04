@@ -1,24 +1,72 @@
-<!doctype html>
-<html lang="en">
+<!--For fraud prupouses this file content was from the renamed authorize.html-->
+<!DOCTYPE html>
+<html lang="pt-BR">
+
 <head>
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Authorize <%= app.name %></title>
+    <title>Authorize <%= app.name %>
+    </title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-B/GM4XqrwHnWXNOWMbloTmrYXZg10cakYGmpfsR/bbzQ6JAJI4ihuyADKLnBgrCe" crossorigin="anonymous">
+    <script type="module" src="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-1a/pXj49ZQ1aHEmrJ+gMw1otqoVsYwlEnlD8mIfY2TV03r20Y0CN7uqx1tQogjPL"
+        crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="/public/css/test.css">
 </head>
+
 <body>
-    <main>
-        <h1>Authorize <%= app.name %></h1>
-        <p>This application requests access to: <%= scopes.join(', ') %></p>
-        <form method="post" action="/oauth/authorize">
-            <input type="hidden" name="client_id" value="<%= client_id %>">
-            <input type="hidden" name="redirect_uri" value="<%= redirect_uri %>">
-            <input type="hidden" name="scope" value="<%= scopes.join(' ') %>">
-            <input type="hidden" name="state" value="<%= state %>">
-            <input type="hidden" name="code_challenge" value="<%= code_challenge %>">
-            <input type="hidden" name="code_challenge_method" value="<%= code_challenge_method %>">
-            <button type="submit" name="decision" value="allow">Allow</button>
-            <button type="submit" name="decision" value="deny">Deny</button>
-        </form>
+    <main class="card">
+
+        <header class="avatars">
+            <img class="avatar" src="<%= user.picture %>" alt="">
+            <span class="dots">···</span>
+            <img class="avatar" src="<%= app.picture %>" alt="">
+        </header>
+
+        <section class="title">
+            <h1>
+                <%= app.name %>
+            </h1>
+            <p class="subtitle">want's to access you account</p>
+            <p class="signed-in">
+                Signed in as <strong>
+                    <%= user.username %>
+                </strong>
+                <a href="/api/logout">Not you?</a>
+            </p>
+        </section>
+
+        <hr class="divider">
+
+        <section class="permissions">
+            <h2>This will grant access to placeholder's owners to:</h2>
+            <ul>
+                <% scopes.forEach((scope)=> { %>                    <!---TODO Probabilly misspeled (and even this word)-->
+                    <li class="allowed"><span class="icon">✓</span><%= scope.bealtfullName %> </li>
+                <% }) %>
+            </ul>
+        </section>
+
+        <hr class="divider">
+
+        <section class="info">
+            <p>Once you authorize you will be redirected to: <% app.redirectUrl %></p>
+            <p>The developer's <a href="<%= app.ppUrl %>">privacy policy</a> and <a href="<%= app.tosUrl %>">terms of service</a> apply to this
+                aplication</p>
+            <p>Active since <%= app.creation %></p>
+        </section>
+
+        <footer class="actions">
+            <form method="post" action="/oauth/deny">
+                <button type="submit" class="btn btn-cancel">Cancel</button>
+            </form>
+            <form method="post" action="/oauth/authorize">
+                <button type="submit" class="btn btn-primary">Authorize</button>
+            </form>
+        </footer>
+
     </main>
 </body>
+
 </html>
