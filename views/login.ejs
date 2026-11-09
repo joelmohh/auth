@@ -49,21 +49,35 @@
           </div>
         </form>
 
-        <span class="form-text">Don't have an account yet? <a href="./signup.html" class="">Create one</a></span>
-
-        <!-- Social logins -->
-        <div class="divider my-4">or continue with</div>
-
-        <div>
-          <div class="mb-5">
-            <a href="/auth/google" class="btn btn-lg theme-primary btn-outline w-100">
-              <span class="social-icon" aria-hidden="true">A</span> Google
-            </a>
+        <div id="verifyOtpInput" class="d-none">
+            <h2 class="mt-5 mb-5">Verify your account</h2>
+            <p class="form-text">
+              We sended an code to  <strong>${email}</strong>. What's the code?
+            </p>
+            <div class="otp" data-bs-otp data-bs-groups="[3,3]">
+              <input type="text" class="otp-input w-100" maxlength="6" aria-label="Verification code">
+            </div>
+            <div class="form-field mt-5">
+              <button class="btn theme-primary btn-solid w-100 next-step">Verify</button>
+              <a class="resend-otp text-center form-text" href="#">Resend OTP (XXs)</a>
+            </div>
           </div>
-        </div>
 
+        <span class="form-text">Don' t have an account yet? <a href="./signup.html" class="">Create one</a></span>
+
+          <!-- Social logins -->
+          <div class="divider my-4">or continue with</div>
+
+          <div>
+            <div class="mb-5">
+              <a href="/auth/google" class="btn btn-lg theme-primary btn-outline w-100">
+                <span class="social-icon" aria-hidden="true">A</span> Google
+              </a>
+            </div>
+          </div>
+
+        </div>
       </div>
-    </div>
   </main>
 
   <!-- Bootstrap 6: JS é ESM-only, precisa de type="module" -->

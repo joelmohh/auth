@@ -24,6 +24,7 @@
                     <li class="stepper-item active step"></li>
                     <li class="stepper-item step"></li>
                     <li class="stepper-item step"></li>
+                    <li class="stepper-item step"></li>
                 </ol>
 
                 <form action="/login" method="post" data-bs-validate novalidate>
@@ -116,6 +117,16 @@
                             <a class="text-center form-text previous-step" href="#">Go back</a>
                         </div>
                     </div>
+                    <div id="step-4" class="d-none">
+                        <h2 class="mt-5 mb-5">Verify your account</h2>
+                        <div class="otp" data-bs-otp data-bs-groups="[3,3]">
+                            <input type="text" class="otp-input w-100" maxlength="6" aria-label="Verification code">
+                        </div>
+                        <div class="form-field mt-5">
+                            <button class="btn theme-primary btn-solid w-100 next-step">Verify</button>
+                            <a class="resend-otp text-center form-text" href="#">Resend OTP (XXs)</a>
+                        </div>
+                    </div>
 
                 </form>
                 <span class="form-text mt-5">Already have an account? <a href="./login.html" class="">Login</a></span>
@@ -139,34 +150,34 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-        const form = document.querySelector('form')
-        const stepEls = [1, 2, 3].map(n => document.getElementById(`step-${n}`))
-        const indicators = document.querySelectorAll('.stepper-item')
-        const totalSteps = stepEls.length
-        let currentStep = 0
+            const form = document.querySelector('form')
+            const stepEls = [1, 2, 3, 4].map(n => document.getElementById(`step-${n}`))
+            const indicators = document.querySelectorAll('.stepper-item')
+            const totalSteps = stepEls.length
+            let currentStep = 0
 
-        function showStep(i) {
-            currentStep = i
-            stepEls.forEach((el, idx) => el.classList.toggle('d-none', idx !== i))
-            indicators.forEach((el, idx) => el.classList.toggle('active', idx <= i))
-        }
-
-        form.addEventListener('submit', (e) => {
-            e.preventDefault()
-            if (currentStep < totalSteps - 1) {
-                showStep(currentStep + 1)
-            } else {
-                form.submit() 
+            function showStep(i) {
+                currentStep = i
+                stepEls.forEach((el, idx) => el.classList.toggle('d-none', idx !== i))
+                indicators.forEach((el, idx) => el.classList.toggle('active', idx <= i))
             }
-        })
 
-        document.querySelectorAll('.previous-step').forEach(link => {
-            link.addEventListener('click', (e) => {
+            form.addEventListener('submit', (e) => {
                 e.preventDefault()
-                if (currentStep > 0) showStep(currentStep - 1)
+                if (currentStep < totalSteps - 1) {
+                    showStep(currentStep + 1)
+                } else {
+                    form.submit()
+                }
+            })
+
+            document.querySelectorAll('.previous-step').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault()
+                    if (currentStep > 0) showStep(currentStep - 1)
+                })
             })
         })
-    })
     </script>
 </body>
 
