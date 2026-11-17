@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Signup</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="/public/css/test.css">
+    <link rel="stylesheet" href="./css/global.css">
 </head>
 
 <body data-bs-theme="dark">
@@ -21,10 +21,10 @@
                 </section>
 
                 <ol class="stepper stepper-horizontal">
-                    <li class="stepper-item active step"></li>
-                    <li class="stepper-item step"></li>
-                    <li class="stepper-item step"></li>
-                    <li class="stepper-item step"></li>
+                    <li class="stepper-item active step theme-brand"></li>
+                    <li class="stepper-item step theme-brand"></li>
+                    <li class="stepper-item step theme-brand"></li>
+                    <li class="stepper-item step theme-brand"></li>
                 </ol>
 
                 <form action="/login" method="post" data-bs-validate novalidate>
@@ -33,14 +33,14 @@
                         <div class="form-field flex-1">
                             <label for="email" class="form-label">Email address <span
                                     class="text-danger form-text">*</span></label>
-                            <input type="email" class="form-control" id="email" placeholder="example@example.com">
+                            <input type="email" class="form-control theme-brand" id="email" placeholder="example@example.com">
                             <div class="invalid-feedback">Please enter a valid email address.</div>
                             <div class="valid-feedback">Looks good!</div>
                         </div>
                         <div class="form-field mt-5">
                             <label for="password" class="form-label">Password <span
                                     class="text-danger form-text">*</span></label>
-                            <input type="password" class="form-control" id="password" placeholder="Enter password">
+                            <input type="password" class="form-control theme-brand" id="password" placeholder="Enter password">
                             <div class="strength-bar" data-bs-strength></div>
                             <div class="invalid-feedback">Please enter a password.</div>
                             <div class="valid-feedback">Awesome!</div>
@@ -48,45 +48,45 @@
                         <div class="form-field mt-5">
                             <label for="passwordC" class="form-label">Password Confirmation <span
                                     class="text-danger form-text">*</span></label>
-                            <input type="password" class="form-control" id="passwordC" placeholder="Re-enter password">
+                            <input type="password" class="form-control theme-brand" id="passwordC" placeholder="Re-enter password">
                             <div class="invalid-feedback">Please enter a password.</div>
                             <div class="valid-feedback">Awesome!</div>
                         </div>
                         <div class="form-field flex-1 mt-5">
                             <label for="username" class="form-label">Username <span
                                     class="text-danger form-text">*</span></label>
-                            <input type="text" class="form-control" id="username" placeholder="jhondoe">
+                            <input type="text" class="form-control theme-brand" id="username" placeholder="jhondoe">
                             <div class="invalid-feedback">Please enter a username.</div>
                             <div class="valid-feedback">Looks good!</div>
                         </div>
                         <div class="form-field mt-5">
-                            <input type="checkbox" id="terms" class="check" />
+                            <input type="checkbox" id="terms" class="check theme-brand" />
                             <div class="form-field-content">
                                 <label for="terms">I agree to the ToS</label>
                             </div>
                             <div class="invalid-feedback">You have to agree with the ToS.</div>
                         </div>
                         <div class="form-field mt-5">
-                            <button class="btn theme-primary btn-solid next-step">Next</button>
+                            <button class="btn theme-brand btn-solid next-step">Next</button>
                         </div>
                     </div>
                     <div id="step-2" class="d-none">
                         <h2 class="mt-5 mb-5">Personal data</h2>
                         <div class="form-field flex-1">
                             <label for="name" class="form-label">Full Name</label>
-                            <input type="text" class="form-control" id="name" placeholder="Jhon Doe">
+                            <input type="text" class="form-control theme-brand" id="name" placeholder="Jhon Doe">
                         </div>
                         <div class="form-field mt-5">
                             <label for="phone" class="form-label">Phone</label>
-                            <input type="tel" class="form-control" id="phone" placeholder="+1 (111) 111-1111">
+                            <input type="tel" class="form-control theme-brand" id="phone" placeholder="+1 (111) 111-1111">
                         </div>
                         <div class="form-field mt-5">
                             <label for="address" class="form-label">Address</label>
-                            <input type="text" class="form-control" id="address" placeholder="Enter your address">
+                            <input type="text" class="form-control theme-brand" id="address" placeholder="Enter your address">
                         </div>
                         <div class="form-field flex-1 mt-5">
                             <label for="datepicker1" class="form-label">Birthday</label>
-                            <input type="text" class="form-control" id="datepicker1" data-bs-toggle="datepicker"
+                            <input type="text" class="form-control theme-brand" id="datepicker1" data-bs-toggle="datepicker"
                                 autocomplete="off" placeholder="Choose date…">
                         </div>
                         <div class="form-field mt-5">
@@ -123,9 +123,7 @@
                             <input type="text" class="otp-input w-100" maxlength="6" aria-label="Verification code">
                         </div>
                         <div class="form-field mt-5">
-                            <button                 <div class="drawer-footer">
-                    <span class="muted fs-sm">v1.0 · ambiente de teste</span>
-                </div>class="btn theme-primary btn-solid w-100 next-step">Verify</button>
+                            <class="btn theme-primary btn-solid w-100 next-step">Verify</button>
                             <a class="resend-otp text-center form-text" href="#">Resend OTP (XXs)</a>
                         </div>
                     </div>
