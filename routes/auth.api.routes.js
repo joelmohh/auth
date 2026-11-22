@@ -32,7 +32,7 @@ async function createOtpAndSend(userId, email, purpose) {
 
             await otp.save()
                 .then(() => {
-                    sendEmail(email, "You auth code", `Your auth code is ${code}, and it will expire in 10 minutes.`)
+                    sendEmail(email, "Your auth code", `Your auth code is ${code}, and it will expire in 10 minutes.`)
                 });
             return { success: true, messsage: "Otp code send successfully." }
         }
@@ -43,7 +43,7 @@ async function createOtpAndSend(userId, email, purpose) {
             expiresAt: new Date(otpExpiry),
             lastSentAt: Date.now()
         }).then(() => {
-            sendEmail(email, "You auth code", `Your auth code is ${code}, and it will expire in 10 minutes.`)
+            sendEmail(email, "Your auth code", `Your auth code is ${code}, and it will expire in 10 minutes.`)
         });
 
         return { success: true, messsage: "Otp code send successfully." }
