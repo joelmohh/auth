@@ -1,80 +1,47 @@
 <!DOCTYPE html>
 <html lang="en">
-<%- include('./partials/head') %>
-<body data-bs-theme="dark">
-  <div class="toast-container"></div>
+<%- include('partials/head', { title: 'Sign in' }) %>
+<body data-page="login">
   <main class="container min-vh-100 d-flex align-items-center justify-content-center py-4">
-    <div class="card auth-card shadow p-6">
-      <div class="card-body p-4">
-        <section class="text-center mb-4">
-          <div>Login</div>
-          <h1 class="fw-normal text-secondary mb-0">Access your account</h1>
-        </section>
+    <div class="card auth-card shadow w-100">
+      <div class="card-body p-4 p-md-5">
+        <div class="mb-4"><%- include('partials/brand') %></div>
 
-        <form id="loginForm" data-bs-validate novalidate>
-          <div class="form-field flex-1">
-            <label for="email" class="form-label">Email address</label>
-            <input type="email" class="form-control theme-brand" id="email" required placeholder="example@example.com">
-            <div class="invalid-feedback">Please enter a valid email address.</div>
-            <div class="valid-feedback">Looks good!</div>
-          </div>
+        <div id="loginView">
+          <h1 class="h4 mb-1">Sign in</h1>
+          <p class="text-secondary mb-4">Welcome back! Sign in to continue.</p>
 
-          <div class="form-field mt-5">
-            <div class="d-flex justify-content-between align-items-center">
-              <label for="password" class="form-label">Password</label>
-              <span class="form-text forgot-text">Forgot your password? <a class="theme-brand" href="#">Click here</a></span>
+          <a href="/api/auth/google" class="btn btn-outline w-100" data-google-login>
+            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="#EA4335" d="M12 5.04c1.62 0 3.06.56 4.2 1.64l3.12-3.12C17.46 1.8 14.96.75 12 .75 7.4.75 3.44 3.4 1.53 7.26l3.66 2.84C6.06 7.09 8.8 5.04 12 5.04z"/><path fill="#4285F4" d="M23.25 12.26c0-.79-.07-1.54-.2-2.26H12v4.51h6.32c-.27 1.48-1.11 2.68-2.37 3.5l3.62 2.81c2.12-1.96 3.68-4.85 3.68-8.56z"/><path fill="#FBBC05" d="M5.19 14.29a7.15 7.15 0 0 1 0-4.58L1.53 6.87a11.26 11.26 0 0 0 0 10.26l3.66-2.84z"/><path fill="#34A853" d="M12 23.25c3.04 0 5.6-1 7.46-2.72l-3.62-2.81c-1 .68-2.3 1.08-3.84 1.08-3.2 0-5.94-2.05-6.81-4.87l-3.66 2.84C3.44 20.6 7.4 23.25 12 23.25z"/></svg>
+            Continue with Google
+          </a>
+          <div class="divider my-4">or</div>
+
+          <form id="loginForm" novalidate>
+            <div class="form-field">
+              <label for="email" class="form-label">Email address</label>
+              <input type="email" class="form-control" id="email" name="email" required autocomplete="email" placeholder="you@example.com">
+              <div class="invalid-feedback">Enter a valid email address.</div>
             </div>
-            <input type="password" class="form-control theme-brand" id="password" placeholder="Enter password" required>
-            <div class="invalid-feedback">Please enter a password.</div>
-            <div class="valid-feedback">Awesome!</div>
-          </div>
-
-          <div class="form-field mt-5">
-            <input type="checkbox" id="fieldValidateCheck" class="check theme-brand">
-            <div class="form-field-content">
-              <label for="fieldValidateCheck">Remember me</label>
+            <div class="form-field mt-4">
+              <div class="d-flex justify-content-between align-items-baseline">
+                <label for="password" class="form-label">Password</label>
+                <a class="form-text" href="/reset-password">Forgot password?</a>
+              </div>
+              <input type="password" class="form-control" id="password" name="password" required autocomplete="current-password" placeholder="Enter your password">
+              <div class="invalid-feedback">Enter your password.</div>
             </div>
-          </div>
-          <div class="form-field mt-6">
-            <button id="loginBtn" class="btn theme-brand btn-solid">Login</button>
-          </div>
-        </form>
+            <button type="submit" class="btn theme-brand btn-solid w-100 mt-4">Continue</button>
+          </form>
 
-        <div id="verifyOtpInput" class="d-none">
-            <h2 class="mt-5 mb-5">Verify your account</h2>
-            <p class="form-text">
-              We sended an code to  <strong>${email}</strong>. What's the code?
-            </p>
-            <div class="otp" data-bs-otp data-bs-groups="[3,3]">
-              <input type="text" class="otp-input w-100" maxlength="6" aria-label="Verification code">
-            </div>
-            <div class="form-field mt-5">
-              <button class="btn theme-primary btn-solid w-100 next-step">Verify</button>
-              <a class="resend-otp text-center form-text" href="#">Resend OTP (XXs)</a>
-            </div>
-          </div>
-
-        <span class="form-text">Don' t have an account yet? <a href="/signup" class="theme-brand">Create one</a></span>
-
-          <!-- Social logins -->
-          <div class="divider my-4">or continue with</div>
-
-          <div>
-            <div class="mb-5">
-              <a href="/auth/google" class="btn btn-lg theme-primary btn-outline w-100">
-                <span class="social-icon" aria-hidden="true">A</span> Google
-              </a>
-            </div>
-          </div>
-
+          <p class="form-text text-center mt-4 mb-0">Don't have an account? <a href="/signup">Sign up</a></p>
         </div>
+
+        <%- include('partials/otp', { label: 'Verify' }) %>
       </div>
+    </div>
   </main>
-
-  <script type="module"
-    src="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/js/bootstrap.bundle.min.js"></script>
+  <%- include('partials/scripts') %>
   <script src="/js/auth.js"></script>
-  <script src="/js/toast.js"></script>
 </body>
-
 </html>

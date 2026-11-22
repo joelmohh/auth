@@ -1,88 +1,85 @@
-<!--For fraud prupouses this file content was from the renamed authorize.html-->
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
+<%- include('partials/head', { title: 'Authorize ' + app.name }) %>
+<body data-page="authorize">
+  <main class="container min-vh-100 d-flex align-items-center justify-content-center py-4">
+    <div class="card auth-card shadow w-100">
+      <div class="card-body p-4 p-md-5">
+        <div class="mb-4"><%- include('partials/brand') %></div>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Authorize Placeholder
-    </title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-B/GM4XqrwHnWXNOWMbloTmrYXZg10cakYGmpfsR/bbzQ6JAJI4ihuyADKLnBgrCe" crossorigin="anonymous">
-    <script type="module" src="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-1a/pXj49ZQ1aHEmrJ+gMw1otqoVsYwlEnlD8mIfY2TV03r20Y0CN7uqx1tQogjPL"
-        crossorigin="anonymous"></script>
-    <link rel="stylesheet" href="/public/css/test.css">
-</head>
-
-<body>
-    <main class="container min-vh-100 d-flex align-items-center justify-content-center py-4">
-        <div class="card auth-card shadow p-6">
-            <div class="card-body p-4">
-                <header class="avatars">
-                    <span class="avatar">AB</span>
-                    <span class="dots">···</span>
-                    <span class="avatar">CD</span>
-                </header>
-
-                <section class="title">
-                    <h1>
-                        Placeholder
-                    </h1>
-                    <p class="subtitle">want's to access you account</p>
-                    <p class="signed-in">
-                        Signed in as <strong>placehold</strong> <a href="/api/logout">Not you?</a>
-                    </p>
-                </section>
-
-                <hr class="divider">
-
-                <section class="permissions">
-                    <h4 class="mt-5 mb-5">This will grant access to placeholder's owners to:</h3>
-                        <div class="form-field mb-5">
-                            <input type="checkbox" class="check" checked disabled />
-                            <div class="form-field-content">
-                                <label for="checkDescription">Your basic info</label>
-                                <small class="form-text">E-mail address, username.</small>
-                            </div>
-                        </div>
-                        <div class="form-field mb-5">
-                            <input type="checkbox" class="check" checked disabled />
-                            <div class="form-field-content">
-                                <label for="checkDescription">Your profile info</label>
-                                <small class="form-text">Full name, address etc.</small>
-                            </div>
-                        </div>
-                        <div class="form-field mb-5">
-                            <input type="checkbox" class="check" disabled />
-                            <div class="form-field-content">
-                                <label for="checkDescription">Your password</label>
-                                <small class="form-text">Not doing that</small>
-                            </div>
-                        </div>
-                </section>
-
-                <hr class="divider">
-
-                <section class="info">
-                    <p class="form-text">Once you authorize you will be redirected to: <% app.redirectUrl %>
-                    </p>
-                    <p class="form-text">The developer's <a href="<%= app.ppUrl %>">privacy policy</a> and <a
-                            href="<%= app.tosUrl %>">terms of service</a> apply to this
-                        aplication</p>
-                    <p class="form-text">Active since <%= app.creation %>
-                    </p>
-                </section>
-
-                <footer class="form-field d-flex float-end">
-                    <form method="post" action="/oauth/authorize">
-                        <button type="submit" class="btn btn-solid theme-primary">Authorize</button>
-                    </form>
-                    <button type="submit" class="btn btn-outline theme-danger">Cancel</button>
-                </footer>
-            </div>
+        <div class="d-flex align-items-center gap-3 mb-1">
+          <span class="avatar" style="width:2.5rem;height:2.5rem;font-size:1rem" aria-hidden="true"><%= app.name.slice(0, 2).toUpperCase() %></span>
+          <h1 class="h5 mb-0"><%= app.name %></h1>
         </div>
-    </main>
-</body>
+        <p class="text-secondary mb-1">wants to access your account</p>
+        <p class="form-text mb-4">Signed in as <strong data-user-name>…</strong></p>
 
+        <hr class="my-4">
+
+        <h2 class="h6 mb-3">This will allow <%= app.name %> to:</h2>
+        <ul class="list-unstyled d-grid gap-3 mb-4">
+          <% const SCOPE_INFO = {
+            username: ['See your username', 'Your public @handle.'],
+            email: ['See your email address', 'Includes whether it is verified.'],
+            profile: ['See your profile', 'Display name, avatar, banner and bio.'],
+            phone: ['See your phone number', 'Only if you added one.'],
+            address: ['See your address', 'Only if you added one.'],
+            birthDate: ['See your birth date', 'Only if you added one.']
+          }; %>
+          <% scopes.forEach(function (scope) { const info = SCOPE_INFO[scope] || ['Access: ' + scope, '']; %>
+          <li class="d-flex gap-3">
+            <span class="check check-on" style="pointer-events:none" aria-hidden="true"></span>
+            <span>
+              <span class="d-block" style="font-size:.925rem;font-weight:500"><%= info[0] %></span>
+              <% if (info[1]) { %><span class="form-text"><%= info[1] %></span><% } %>
+            </span>
+          </li>
+          <% }) %>
+        </ul>
+
+        <hr class="my-4">
+
+        <p class="form-text mb-4">
+          Once you authorize, you will be redirected to
+          <strong class="mono"><%= new URL(redirect_uri).origin %></strong>.
+          You can revoke this access at any time from your account page.
+        </p>
+
+        <div class="d-flex gap-2 justify-content-end">
+          <button type="button" class="btn btn-outline theme-danger" id="denyBtn">Cancel</button>
+          <button type="button" class="btn theme-brand btn-solid" id="allowBtn">Authorize</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <%- include('partials/scripts') %>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const payload = {
+        client_id: <%- JSON.stringify(client_id) %>,
+        redirect_uri: <%- JSON.stringify(redirect_uri) %>,
+        scope: <%- JSON.stringify(scopes.join(' ')) %>,
+        state: <%- JSON.stringify(state || '') %>,
+        code_challenge: <%- JSON.stringify(code_challenge || '') %>,
+        code_challenge_method: <%- JSON.stringify(code_challenge_method || '') %>
+      };
+
+      const me = await Api.get('/api/me');
+      if (!me.success) return; // Api redireciona para /login preservando esta página
+      document.querySelector('[data-user-name]').textContent = me.data?.username || '';
+
+      async function decide(decision, btn) {
+        btn.disabled = true;
+        const r = await Api.post('/oauth/authorize', { ...payload, decision });
+        btn.disabled = false;
+        if (r.success && r.redirectURL) return (location.href = r.redirectURL);
+        showToast(r.message || 'Could not complete the authorization.', 'error');
+      }
+
+      document.getElementById('allowBtn').addEventListener('click', (e) => decide('allow', e.currentTarget));
+      document.getElementById('denyBtn').addEventListener('click', (e) => decide('deny', e.currentTarget));
+    });
+  </script>
+</body>
 </html>

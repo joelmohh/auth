@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<%- include('../partials/head', { title: 'App users' }) %>
+<body data-page="appUsers">
+  <%- include('partials/menu') %>
+  <div class="layout">
+    <nav class="sidebar d-none lg:d-block" aria-label="Navigation">
+      <%- include('partials/sidebar') %>
+    </nav>
+    <main class="p-4 p-md-5">
+      <a href="/dashboard/apps" class="back-link mb-3"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to apps</a>
+      <h1 class="h4 mb-1">Users</h1>
+      <p class="text-secondary mb-4">People who authorized <strong data-app-name>this app</strong>.</p>
+
+      <div class="card">
+        <div class="table-wrap">
+          <table class="table-simple users-table">
+            <thead>
+              <tr><th scope="col">User</th><th scope="col">Scopes</th><th scope="col" class="text-end">Actions</th></tr>
+            </thead>
+            <tbody id="usersBody">
+              <tr><td colspan="3" class="text-secondary table-loading">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="empty-state d-none" id="emptyUsers">
+          <i class="fa-solid fa-users-slash empty-state-icon" aria-hidden="true"></i>
+          <p class="empty-state-title">No users yet</p>
+          <p class="text-secondary mb-0">When someone signs in to <strong data-app-name>this app</strong> through the authorization flow, they will show up here.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <dialog class="card" id="banDialog" aria-labelledby="banTitle">
+    <div class="card-body p-4">
+      <h2 class="h5 mb-2" id="banTitle">Ban user</h2>
+      <p class="text-secondary"><strong data-ban-name></strong> loses access to this app immediately and cannot authorize it again while banned.</p>
+      <div class="form-field">
+        <label id="banUntilLabel" class="form-label">Ban until <span class="text-secondary">(optional)</span></label>
+        <div id="banPicker" role="group" aria-labelledby="banUntilLabel"></div>
+        <p class="form-text mt-1 mb-0">Leave empty for a permanent ban.</p>
+      </div>
+      <div class="d-flex justify-content-end gap-2 mt-4">
+        <button type="button" class="btn btn-text" data-close>Cancel</button>
+        <button type="button" class="btn theme-danger btn-solid" id="confirmBan">
+          <i class="fa-solid fa-gavel" aria-hidden="true"></i> Ban user
+        </button>
+      </div>
+    </div>
+  </dialog>
+
+  <%- include('../partials/scripts') %>
+  <script src="/js/dashboard.js"></script>
+</body>
+</html>

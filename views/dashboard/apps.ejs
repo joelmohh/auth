@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<%- include('../partials/head', { title: 'Your apps' }) %>
+<body data-page="apps">
+  <%- include('partials/menu') %>
+  <div class="layout">
+    <nav class="sidebar d-none lg:d-block" aria-label="Navigation">
+      <%- include('partials/sidebar') %>
+    </nav>
+    <main class="p-4 p-md-5">
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+        <div>
+          <h1 class="h4 mb-1">Your apps</h1>
+          <p class="text-secondary mb-0">See, create and manage your apps</p>
+        </div>
+        <button class="btn theme-brand btn-solid" type="button" id="newAppBtn">
+          <i class="fa-solid fa-plus" aria-hidden="true"></i> New app
+        </button>
+      </div>
+
+      <div class="d-flex flex-wrap gap-3 mb-4">
+        <input type="search" class="form-control flex-1" id="search" placeholder="Search apps" aria-label="Search apps">
+        <select class="form-control" id="statusFilter" aria-label="Filter by status" style="width:auto">
+          <option value="">All statuses</option><option value="active">Active</option><option value="disabled">Disabled</option>
+        </select>
+        <select class="form-control" id="sortBy" aria-label="Sort" style="width:auto">
+          <option value="az">Name A–Z</option><option value="za">Name Z–A</option>
+        </select>
+      </div>
+
+      <div class="grid row-gap-4" id="appGrid"></div>
+      <p class="text-secondary text-center d-none py-5" id="empty">No apps found.</p>
+      <div class="d-flex justify-content-center gap-2 mt-5" id="pager"></div>
+    </main>
+  </div>
+
+  <template id="appTpl">
+    <div class="g-col-12 md:g-col-6 xl:g-col-4">
+      <div class="card overflow-hidden h-100">
+        <div class="app-banner"></div>
+        <div class="app-avatar"></div>
+        <div class="card-body pt-2">
+          <div class="d-flex justify-content-between align-items-center gap-2">
+            <span class="fw-semibold text-truncate" data-name></span>
+            <span class="badge badge-subtle" data-status></span>
+          </div>
+          <a class="btn btn-sm theme-brand btn-solid mt-3" data-select>Select</a>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <dialog class="card" id="newAppDialog" aria-labelledby="newAppTitle">
+    <div class="card-body p-4">
+      <form id="newAppForm" novalidate>
+        <h2 class="h5 mb-3" id="newAppTitle">New app</h2>
+        <div class="form-field">
+          <label for="appName" class="form-label">Name</label>
+          <input type="text" class="form-control" id="appName" name="name" required minlength="2" maxlength="64">
+          <div class="invalid-feedback">Enter a name (2–64 characters).</div>
+        </div>
+        <div class="form-field mt-4">
+          <label for="appDesc" class="form-label">Description <span class="text-secondary">(optional)</span></label>
+          <textarea class="form-control" id="appDesc" name="description" rows="2" maxlength="280"></textarea>
+        </div>
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button type="button" class="btn btn-text" data-close>Cancel</button>
+          <button type="submit" class="btn theme-brand btn-solid">Create</button>
+        </div>
+      </form>
+      <div id="secretView" class="d-none">
+        <h2 class="h5 mb-2">App created</h2>
+        <p class="text-secondary">Copy the client secret now. It will not be shown again.</p>
+        <label class="form-label" for="clientId">Client ID</label>
+        <input class="form-control mono mb-3" id="clientId" readonly>
+        <label class="form-label" for="clientSecret">Client secret</label>
+        <input class="form-control mono mb-4" id="clientSecret" readonly>
+        <div class="d-flex justify-content-end gap-2">
+          <button type="button" class="btn btn-outline" id="copySecret">Copy secret</button>
+          <button type="button" class="btn theme-brand btn-solid" data-close>Done</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <%- include('../partials/scripts') %>
+  <script src="/js/dashboard.js"></script>
+</body>
+</html>

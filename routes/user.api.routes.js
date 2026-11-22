@@ -199,7 +199,7 @@ Router.delete('/sessions/:id', verifyToken, async (req, res) => {
         const session = await Session.findOneAndUpdate(
             { _id: req.params.id, userId: req.user.id, revokedAt: null },
             { $set: { revokedAt: new Date(), revokedBy: 'user' } },
-            { new: true }
+            { returnDocument: 'after' }
         )
         if (!session) {
             return res.status(404).json({ success: false, message: 'Session not found.' })

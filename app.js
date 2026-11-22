@@ -40,8 +40,7 @@ app.use((req, res) => {
     if(req.path.startsWith('/api/') || req.path.startsWith('/oauth/')){
         return res.status(404).json({ success: false, message: "Route not found"})
     }
-    // TO improve later 
-    return res.status(404).send('<!doctype html><html><body><h1>Page not found</h1></body></html>')
+    return res.status(404).render('error', { status: 404, title: 'Page not found', message: 'The page you are looking for does not exist.' })
 })
 
 app.use((error, req, res, next) => {
@@ -56,7 +55,7 @@ app.use((error, req, res, next) => {
     if (req.path.startsWith('/api/') || req.path.startsWith('/oauth/')) {
         return res.status(500).json({ success: false, message: 'Internal server error.' });
     }
-    res.status(500).send('<!doctype html><html><body><h1>Internal server error</h1></body></html>');
+    res.status(500).render('error', { status: 500, title: 'Something went wrong', message: 'An unexpected error occurred. Please try again.' });
 });
 
 app.listen(PORT, () => {

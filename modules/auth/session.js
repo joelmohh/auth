@@ -52,7 +52,7 @@ async function verifyToken(req, res, next) {
                 appId: session.appId,
                 userId: decoded.id,
                 revokedAt: null,
-                bannedAt: null
+                ...Grant.notBannedFilter()
             })
 
             if (!app || !grant) {

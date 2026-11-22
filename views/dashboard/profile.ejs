@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<%- include('../partials/head', { title: 'Account' }) %>
+<body data-page="account">
+  <%- include('partials/menu') %>
+  <div class="layout">
+    <nav class="sidebar d-none lg:d-block" aria-label="Navigation">
+      <%- include('partials/sidebar') %>
+    </nav>
+    <main class="p-4 p-md-5" style="max-width:52rem">
+      <h1 class="h4 mb-4">Account</h1>
+
+      <div class="card mb-4"><div class="card-body">
+        <div class="d-flex align-items-center gap-3 mb-4">
+          <span class="avatar" style="width:3rem;height:3rem;font-size:1.1rem" data-user-initials></span>
+          <div>
+            <p class="fw-semibold mb-0" data-user-name></p>
+            <p class="form-text mb-0"><span data-user-email></span> · <span class="badge badge-subtle" data-user-verified></span></p>
+          </div>
+        </div>
+        <h2 class="h6 mb-3">Profile</h2>
+        <form id="profileForm" novalidate>
+          <div class="grid row-gap-3">
+            <div class="g-col-12 md:g-col-6 form-field">
+              <label for="pDisplayName" class="form-label">Display name</label>
+              <input type="text" class="form-control" id="pDisplayName" maxlength="64">
+            </div>
+            <div class="g-col-12 md:g-col-6 form-field">
+              <label for="pPhone" class="form-label">Phone</label>
+              <input type="tel" class="form-control" id="pPhone" maxlength="20" pattern="[0-9+()\-\s]*">
+            </div>
+            <div class="g-col-12 md:g-col-6 form-field">
+              <label for="pBirthDate" class="form-label">Birth date</label>
+              <input type="text" class="form-control" id="pBirthDate" autocomplete="off" placeholder="Choose date…">
+            </div>
+            <div class="g-col-12 form-field">
+              <label for="pBio" class="form-label">Bio</label>
+              <textarea class="form-control" id="pBio" rows="2" maxlength="280"></textarea>
+            </div>
+          </div>
+          <button type="submit" class="btn theme-brand btn-solid btn-sm mt-4">Save profile</button>
+        </form>
+      </div></div>
+
+      <div class="card mb-4"><div class="card-body">
+        <h2 class="h6 mb-1">Active sessions</h2>
+        <p class="form-text mb-3">Devices currently signed in to your account.</p>
+        <ul class="list-unstyled d-grid gap-2 mb-0" id="sessionsList">
+          <li class="text-secondary">Loading…</li>
+        </ul>
+      </div></div>
+
+      <div class="card mb-4"><div class="card-body">
+        <h2 class="h6 mb-1">Authorized apps</h2>
+        <p class="form-text mb-3">Apps that can access your information.</p>
+        <ul class="list-unstyled d-grid gap-2 mb-0" id="authzList">
+          <li class="text-secondary">Loading…</li>
+        </ul>
+      </div></div>
+
+      <div class="card mb-4"><div class="card-body">
+        <h2 class="h6 mb-3">Your data</h2>
+        <div class="d-flex flex-wrap gap-4 align-items-center justify-content-between mb-3">
+          <div>
+            <p class="mb-0 fw-semibold">Export your data</p>
+            <p class="form-text mb-0">Download everything we store about you as JSON.</p>
+          </div>
+          <button class="btn btn-outline btn-sm" type="button" id="exportBtn"><i class="fa-solid fa-download" aria-hidden="true"></i> Download</button>
+        </div>
+        <hr>
+        <div class="d-flex flex-wrap gap-4 align-items-center justify-content-between mt-3">
+          <div>
+            <p class="mb-0 fw-semibold" style="color:var(--danger)">Delete account</p>
+            <p class="form-text mb-0">Revokes all sessions and app authorizations, then schedules deletion.</p>
+          </div>
+          <button class="btn btn-outline theme-danger btn-sm" type="button" id="deleteAccountBtn"><i class="fa-regular fa-trash-can" aria-hidden="true"></i> Delete account</button>
+        </div>
+      </div></div>
+    </main>
+  </div>
+
+  <dialog class="card" id="deleteAccountDialog" aria-labelledby="delAccTitle">
+    <div class="card-body p-4">
+      <h2 class="h5 mb-2" id="delAccTitle">Delete your account?</h2>
+      <p class="text-secondary">All sessions and app authorizations are revoked and your account is scheduled for deletion. Type DELETE to confirm.</p>
+      <label class="form-label" for="deleteAccountConfirm">Confirmation</label>
+      <input class="form-control mb-4" id="deleteAccountConfirm" autocomplete="off" placeholder="DELETE">
+      <div class="d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-text" data-close>Cancel</button>
+        <button type="button" class="btn theme-danger btn-solid" id="confirmDeleteAccount" disabled>Delete my account</button>
+      </div>
+    </div>
+  </dialog>
+
+  <%- include('../partials/scripts') %>
+  <script src="/js/dashboard.js"></script>
+</body>
+</html>

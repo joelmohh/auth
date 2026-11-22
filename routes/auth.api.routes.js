@@ -7,6 +7,7 @@ const User = require("../models/User");
 const App = require("../models/App");
 const Session = require("../models/Session");
 const Otp = require("../models/Otp");
+const Identity = require("../models/Identity");
 
 const { logError } = require("../modules/logs");
 const sendEmail = require("../modules/SMTP/send");
@@ -31,8 +32,7 @@ async function createOtpAndSend(userId, email, purpose) {
 
             await otp.save()
                 .then(() => {
-                    console.log(`OTP for user ${userId} is ${code}. It will expire in 10 minutes.`);
-                    // sendEmail(email, "Your OTP Code", `<p>Your OTP code is: <strong>${code}</strong></p><p>This code will expire in 10 minutes.</p>`);
+                    sendEmail(email, "You auth code", `Your auth code is ${code}, and it will expire in 10 minutes.`)
                 });
             return { success: true, messsage: "Otp code send successfully." }
         }
@@ -43,8 +43,7 @@ async function createOtpAndSend(userId, email, purpose) {
             expiresAt: new Date(otpExpiry),
             lastSentAt: Date.now()
         }).then(() => {
-            console.log(`OTP for user ${userId} is ${code}. It will expire in 10 minutes.`);
-            // sendEmail(email, "Your OTP Code", `<p>Your OTP code is: <strong>${code}</strong></p><p>This code will expire in 10 minutes.</p>`);
+            sendEmail(email, "You auth code", `Your auth code is ${code}, and it will expire in 10 minutes.`)
         });
 
         return { success: true, messsage: "Otp code send successfully." }
@@ -58,11 +57,12 @@ async function createOtpAndSend(userId, email, purpose) {
 
 const expressRT = require('express-rate-limit');
 const limiter = expressRT({
-    windowMs: 5 * 60 * 1000, // 15 minutes
+    windowMs: 5 * 60 * 1000,
     max: 15,
     message: 'Too many requests from this IP, please try again after 5 minutes'
 });
-Router.use(limiter);
+const strict = ['/login', '/signup', '/verify-otp', '/resend-otp', '/forgot-password', '/reset-password'];
+Router.use((req, res, next) => strict.includes(req.path) ? limiter(req, res, next) : next());
 
 Router.post('/login', async (req, res) => {
     try {
@@ -94,7 +94,7 @@ Router.post('/login', async (req, res) => {
         }
 
 
-        const accessToken = await issueSession(user, req, res, 'login');                                             // TODO 
+        const accessToken = await issueSession(user, req, res, 'login');
         res.status(200).json({ success: true, message: "Login successful.", accessToken: accessToken.accessToken, redirectURL: '/dashboard' });
 
     } catch (error) {
@@ -363,7 +363,7 @@ Router.post('/refresh', async (req, res) => {
                 reused.revokedAt = new Date();
                 await reused.save();
 
-                res.clearCookie('refreshToken', { path: '/api/auth' });
+                res.clearCookie('refreshToken', refreshCookieOptions);
                 return res.status(401).json({ success: false, message: "Invalid or expired session." });
             }
 
@@ -498,59 +498,184 @@ Router.post('/reset-password', async (req, res) => {
         res.status(500).json({ success: false, message: "Internal server error." })
     }
 })
+const GOOGLE_STATE_COOKIE = 'googleOAuthState';
+const GOOGLE_REDIRECT_COOKIE = 'googleOAuthRedirect';
+
+function googleOAuthConfig() {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const baseUrl = (process.env.MAIN_URL || `http://localhost:${process.env.PORT || 3000}`).replace(/\/+$/, '');
+    const redirectUri = process.env.GOOGLE_REDIRECT_URL || `${baseUrl}/api/auth/google/callback`;
+    return { clientId, clientSecret, redirectUri };
+}
+
+function safeInternalPath(value) {
+    return typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') ? value : null;
+}
+
+function loginRedirect(message, type) {
+    return '/login?message=' + encodeURIComponent(message) + '&t=' + (type || 'warning');
+}
+
+async function usernameFromEmail(email) {
+    const local = String(email).split('@')[0].toLowerCase().replace(/[^a-z0-9_.-]/g, '').replace(/^[-_.]+|[-_.]+$/g, '');
+    const base = (local.length >= 3 ? local : `${local}user`).slice(0, 24);
+    let candidate = base;
+    while (await User.exists({ username: candidate })) {
+        candidate = `${base}${crypto.randomInt(1000, 10000)}`.slice(0, 32);
+    }
+    return candidate;
+}
+
+Router.get('/google', (req, res) => {
+    try {
+        const { clientId, redirectUri } = googleOAuthConfig();
+        if (!clientId || !process.env.GOOGLE_CLIENT_SECRET) {
+            return res.redirect(loginRedirect('Google sign-in is not configured on this server yet.'));
+        }
+        const state = crypto.randomBytes(24).toString('base64url');
+        res.cookie(GOOGLE_STATE_COOKIE, hashToken(state), {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            path: '/',
+            maxAge: 10 * 60 * 1000
+        });
+        const redirect = safeInternalPath(req.query.redirect);
+        if (redirect) {
+            res.cookie(GOOGLE_REDIRECT_COOKIE, redirect, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax',
+                path: '/',
+                maxAge: 10 * 60 * 1000
+            });
+        }
+        const params = new URLSearchParams({
+            client_id: clientId,
+            redirect_uri: redirectUri,
+            response_type: 'code',
+            scope: 'openid email profile',
+            state,
+            access_type: 'online',
+            prompt: 'select_account'
+        });
+        res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
+    } catch (error) {
+        logError(error);
+        res.redirect(loginRedirect('Could not start Google sign-in. Please try again.', 'error'));
+    }
+});
+
+Router.get('/google/callback', async (req, res) => {
+    const clearOAuthCookies = () => {
+        res.clearCookie(GOOGLE_STATE_COOKIE, { path: '/' });
+        res.clearCookie(GOOGLE_REDIRECT_COOKIE, { path: '/' });
+    };
+    try {
+        const { clientId, clientSecret, redirectUri } = googleOAuthConfig();
+        const postLoginRedirect = safeInternalPath(req.cookies[GOOGLE_REDIRECT_COOKIE]) || '/dashboard';
+        const expectedState = req.cookies[GOOGLE_STATE_COOKIE];
+        clearOAuthCookies();
+
+        if (!clientId || !clientSecret) {
+            return res.redirect(loginRedirect('Google sign-in is not configured on this server yet.'));
+        }
+        if (req.query.error) {
+            return res.redirect(loginRedirect('Google sign-in was cancelled or denied.'));
+        }
+        const { code, state } = req.query;
+        if (!code || !state || !expectedState || hashToken(String(state)) !== expectedState) {
+            return res.redirect(loginRedirect('Invalid Google sign-in state. Please try again.', 'error'));
+        }
+
+        const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                code: String(code),
+                client_id: clientId,
+                client_secret: clientSecret,
+                redirect_uri: redirectUri,
+                grant_type: 'authorization_code'
+            })
+        });
+        if (!tokenResponse.ok) {
+            return res.redirect(loginRedirect('Google sign-in failed while exchanging the code. Please try again.', 'error'));
+        }
+        const tokens = await tokenResponse.json();
+
+        const profileResponse = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
+            headers: { Authorization: `Bearer ${tokens.access_token}` }
+        });
+        if (!profileResponse.ok) {
+            return res.redirect(loginRedirect('Could not read your Google profile. Please try again.', 'error'));
+        }
+        const googleProfile = await profileResponse.json();
+        if (!googleProfile.sub || !googleProfile.email) {
+            return res.redirect(loginRedirect('Your Google account did not return an email address.', 'error'));
+        }
+
+        const email = String(googleProfile.email).toLowerCase();
+        let user;
+        const identity = await Identity.findOne({ provider: 'google', providerUserId: String(googleProfile.sub) });
+        if (identity) {
+            user = await User.findById(identity.userId);
+        } else {
+            user = await User.findOne({ email });
+            if (!user) {
+                user = await User.create({
+                    username: await usernameFromEmail(email),
+                    email,
+                    emailVerifiedAt: new Date(),
+                    termsAcceptedAt: new Date(),
+                    profile: {
+                        displayName: googleProfile.name || undefined,
+                        avatarUrl: googleProfile.picture || undefined
+                    }
+                });
+            }
+            await Identity.create({
+                userId: user._id,
+                provider: 'google',
+                providerUserId: String(googleProfile.sub),
+                email,
+                displayName: googleProfile.name || undefined
+            });
+        }
+
+        if (!user || user.status !== 'active') {
+            return res.redirect(loginRedirect('This account is not active.', 'error'));
+        }
+        if (!user.emailVerifiedAt) {
+            user.emailVerifiedAt = new Date();
+            await user.save();
+        }
+
+        await issueSession(user, req, res, 'google');
+        res.redirect(postLoginRedirect);
+    } catch (error) {
+        logError(error);
+        res.redirect(loginRedirect('Google sign-in failed. Please try again.', 'error'));
+    }
+});
+
 Router.get('/:provider', async (req, res) => {
     try {
-        let provider = req.params.provider
-        provider = String(provider).toLowerCase()
-
-        if (!provider) {
-            return res.status(500).json({ success: false, message: "Something went wrong. Please try again" })
+        const provider = String(req.params.provider || '').toLowerCase();
+        const targets = {
+            x: process.env.X_REDIRECT_URL,
+            apple: process.env.APPLE_REDIRECT_URL
+        };
+        const target = targets[provider];
+        if (target) {
+            return res.status(308).redirect(target);
         }
-
-        switch (provider) {
-            case "google":
-                return res.status(308).redirect(process.env.GOOGLE_REDIRECT_URL)
-            case "x":
-                return res.status(308).redirect(process.env.X_REDIRECT_URL)
-            case "apple":
-                return res.status(308).redirect(process.env.APPLE_REDIRECT_URL)
-            default:
-                return res.status(308).redirect(process.env.MAIN_URL)
-        }
-
-
+        return res.redirect(loginRedirect('This social provider is not available yet.'));
     } catch (error) {
-        logError(error)
-        res.status(500).json({ success: false, message: "Internal server error" })
+        logError(error);
+        res.status(500).json({ success: false, message: "Internal server error" });
     }
 })
-// TO BE DEFINED LATER
-/*
-Router.get('/:provider/callback', async (req, res) => {
-    try {
-        let provider = req.params.provider
-        provider = String(provider).toLowerCase()
-
-        if(!provider){
-            return res.status(500).json({success: false, message: "Something went wrong. Please try again"})
-        }
-
-        switch (provider){
-            case "google":
-                return res.status(308).redirect(process.env.GOOGLE_REDIRECT_URL)
-            case "x":
-                return res.status(308).redirect(process.env.X_REDIRECT_URL)
-            case "apple":
-                return res.status(308).redirect(process.env.APPLE_REDIRECT_URL)
-            default:
-                return res.status(308).redirect(process.env.MAIN_URL)
-        }
-
-
-    } catch (error) {
-        logError(error)
-        res.status(500).json({success: false, message: "Internal server error"})
-    }
-})*/
 
 module.exports = Router;

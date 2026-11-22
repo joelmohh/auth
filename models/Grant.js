@@ -13,9 +13,20 @@ const GrantSchema = new mongoose.Schema({
     scopes:[{type:String}],
     lastUsedAt: Date,
     revokedAt: Date,
-    bannedAt: Date
+    bannedAt: Date,
+    bannedUntil: Date
 }, {timestamps: true})
 GrantSchema.index({ userId: 1, appId: 1 }, { unique: true })
 GrantSchema.index({ appId: 1 })
 
-module.exports = mongoose.model("Grants", GrantSchema)
+function notBannedFilter() {
+    return { $or: [{ bannedAt: null }, { bannedUntil: { $lte: new Date() } }] }
+}
+
+function banIsActive(grant) {
+    return Boolean(grant?.bannedAt && (!grant.bannedUntil || grant.bannedUntil > new Date()))
+}
+
+module.exports = mongoose.model("Grant", GrantSchema)
+module.exports.notBannedFilter = notBannedFilter
+module.exports.banIsActive = banIsActive

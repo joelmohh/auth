@@ -2,14 +2,3 @@
 /node_modules
 /package-lock.json
 /logs
-
-TODO.md
-README.md
-ROUTES.md
-PROBLEMAS.md
-MODELS.md
-
-#tests
-smoke.js 
-tests
-test.css

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<%- include('partials/head', { title: title || 'Error' }) %>
+<body>
+  <main class="container min-vh-100 d-flex align-items-center justify-content-center py-4">
+    <div class="card auth-card shadow w-100 text-center">
+      <div class="card-body p-4 p-md-5">
+        <div class="d-flex justify-content-center mb-4"><%- include('partials/brand') %></div>
+        <p class="display-6 fw-bold mb-1" style="color:var(--brand-strong)"><%= status %></p>
+        <h1 class="h5 mb-2"><%= title %></h1>
+        <p class="text-secondary mb-4"><%= message %></p>
+        <a href="/" class="btn theme-brand btn-solid">Back to home</a>
+      </div>
+    </div>
+  </main>
+  <%- include('partials/scripts') %>
+</body>
+</html>

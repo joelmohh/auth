@@ -1,0 +1,10 @@
+<div data-otp-panel class="d-none">
+  <h2 class="h4 mb-1">Check your email</h2>
+  <p class="text-secondary mb-4">We sent a 6-digit code to <strong data-otp-email></strong>.</p>
+  <div class="form-field mb-4">
+    <label for="otpCode" class="form-label">Verification code</label>
+    <input type="text" class="form-control otp-input w-100" id="otpCode" maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="••••••">
+  </div>
+  <button type="button" class="btn theme-brand btn-solid w-100" data-otp-submit><%= typeof label !== 'undefined' ? label : 'Verify' %></button>
+  <button type="button" class="btn btn-text w-100 mt-2" data-otp-resend disabled>Resend code</button>
+</div>

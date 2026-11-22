@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<%- include('../partials/head', { title: 'App settings' }) %>
+<body data-page="appSettings">
+  <%- include('partials/menu') %>
+  <div class="layout">
+    <nav class="sidebar d-none lg:d-block" aria-label="Navigation">
+      <%- include('partials/sidebar') %>
+    </nav>
+    <main class="p-4 p-md-5" style="max-width:52rem">
+      <a href="/dashboard/apps" class="back-link mb-3"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to apps</a>
+      <h1 class="h4 mb-4">Settings — <span data-app-name>app</span></h1>
+
+      <div class="card mb-4"><div class="card-body">
+        <h2 class="h6 mb-3">General</h2>
+        <form id="generalForm" novalidate>
+          <div class="form-field">
+            <label for="sName" class="form-label">Name</label>
+            <input type="text" class="form-control" id="sName" name="name" required minlength="2" maxlength="64">
+            <div class="invalid-feedback">Enter a name (2–64 characters).</div>
+          </div>
+          <div class="form-field mt-3">
+            <label for="sDesc" class="form-label">Description</label>
+            <textarea class="form-control" id="sDesc" name="description" rows="2" maxlength="280"></textarea>
+          </div>
+          <div class="form-field mt-3">
+            <label for="sStatus" class="form-label">Status</label>
+            <select class="form-control" id="sStatus" name="status" style="width:auto">
+              <option value="active">Active</option>
+              <option value="disabled">Disabled</option>
+            </select>
+            <p class="form-text mt-1 mb-0">A disabled app cannot start new authorizations.</p>
+          </div>
+          <button type="submit" class="btn theme-brand btn-solid btn-sm mt-4">Save changes</button>
+        </form>
+      </div></div>
+
+      <div class="card mb-4"><div class="card-body">
+        <h2 class="h6 mb-1">Redirect URLs</h2>
+        <p class="form-text mb-3">One per line. HTTPS only, except localhost. Exact match, no wildcards or fragments.</p>
+        <form id="redirectsForm" novalidate>
+          <textarea class="form-control mono" id="sRedirects" rows="3" placeholder="https://yourapp.com/callback"></textarea>
+          <button type="submit" class="btn theme-brand btn-solid btn-sm mt-3">Save redirect URLs</button>
+        </form>
+      </div></div>
+
+      <div class="card mb-4"><div class="card-body">
+        <h2 class="h6 mb-1">Scopes</h2>
+        <p class="form-text mb-3">The information this app is allowed to request from users.</p>
+        <form id="scopesForm">
+          <div class="d-flex flex-wrap gap-3" id="scopeChecks"></div>
+          <button type="submit" class="btn theme-brand btn-solid btn-sm mt-3">Save scopes</button>
+        </form>
+      </div></div>
+
+      <div class="card mb-4"><div class="card-body">
+        <h2 class="h6 mb-3">Appearance</h2>
+        <form id="appearanceForm">
+          <div class="d-flex flex-wrap gap-3 align-items-end">
+            <div class="form-field">
+              <label for="sColor" class="form-label">Primary color</label>
+              <input type="color" class="form-control" id="sColor" style="width:4rem;height:2.5rem;padding:.25rem">
+            </div>
+            <div class="form-field">
+              <input type="checkbox" class="check" id="sDark">
+              <div class="form-field-content"><label for="sDark">Dark mode on consent screen</label></div>
+            </div>
+          </div>
+          <button type="submit" class="btn theme-brand btn-solid btn-sm mt-3">Save appearance</button>
+        </form>
+      </div></div>
+
+      <div class="card danger-zone mb-4"><div class="card-body">
+        <h2 class="h6 mb-3" style="color:var(--danger)">Danger zone</h2>
+        <div class="d-flex flex-wrap gap-4 align-items-center justify-content-between mb-3">
+          <div>
+            <p class="mb-0 fw-semibold">Rotate client secret</p>
+            <p class="form-text mb-0">The current secret stops working immediately. The new one is shown once.</p>
+          </div>
+          <button class="btn btn-outline btn-sm" type="button" id="rotateBtn"><i class="fa-solid fa-rotate" aria-hidden="true"></i> Rotate secret</button>
+        </div>
+        <hr>
+        <div class="d-flex flex-wrap gap-4 align-items-center justify-content-between mt-3">
+          <div>
+            <p class="mb-0 fw-semibold">Delete this app</p>
+            <p class="form-text mb-0">Removes the app, its authorizations and tokens. This cannot be undone.</p>
+          </div>
+          <button class="btn btn-outline theme-danger btn-sm" type="button" id="deleteBtn"><i class="fa-regular fa-trash-can" aria-hidden="true"></i> Delete app</button>
+        </div>
+      </div></div>
+    </main>
+  </div>
+
+  <dialog class="card" id="secretDialog" aria-labelledby="rotTitle">
+    <div class="card-body p-4">
+      <h2 class="h5 mb-2" id="rotTitle">New client secret</h2>
+      <p class="text-secondary">Copy it now. It will not be shown again.</p>
+      <label class="form-label" for="newSecret">Client secret</label>
+      <input class="form-control mono mb-4" id="newSecret" readonly>
+      <div class="d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-outline" id="copyNewSecret">Copy secret</button>
+        <button type="button" class="btn theme-brand btn-solid" data-close>Done</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog class="card" id="deleteDialog" aria-labelledby="delTitle">
+    <div class="card-body p-4">
+      <h2 class="h5 mb-2" id="delTitle">Delete app?</h2>
+      <p class="text-secondary">This permanently deletes the app, every user authorization and all tokens. Type the app name to confirm.</p>
+      <label class="form-label" for="deleteConfirm">App name</label>
+      <input class="form-control mb-4" id="deleteConfirm" autocomplete="off">
+      <div class="d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-text" data-close>Cancel</button>
+        <button type="button" class="btn theme-danger btn-solid" id="confirmDelete" disabled>Delete permanently</button>
+      </div>
+    </div>
+  </dialog>
+
+  <%- include('../partials/scripts') %>
+  <script src="/js/dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<header class="app-header">
+  <div class="container-fluid d-flex align-items-center justify-content-between py-2 px-3 px-md-4">
+    <div class="d-flex align-items-center gap-2">
+      <button class="btn btn-text btn-icon lg:d-none" type="button" data-bs-toggle="drawer" data-bs-target="#navDrawer" aria-controls="navDrawer" aria-label="Open navigation">
+        <i class="fa-solid fa-bars" aria-hidden="true"></i>
+      </button>
+      <%- include('../../partials/brand') %>
+    </div>
+    <div class="position-relative">
+      <button class="btn btn-text d-flex align-items-center gap-2" type="button" data-bs-toggle="menu" aria-label="Account menu">
+        <span class="avatar" data-user-initials></span>
+        <span class="d-none md:d-inline" data-user-name></span>
+        <i class="fa-solid fa-chevron-down" style="font-size:.7rem" aria-hidden="true"></i>
+      </button>
+      <div class="menu" role="menu">
+        <a class="menu-item" href="/dashboard/account" role="menuitem"><i class="fa-regular fa-circle-user fa-fw" aria-hidden="true"></i>Account</a>
+        <a class="menu-item" href="/dashboard/apps" role="menuitem"><i class="fa-solid fa-grip fa-fw" aria-hidden="true"></i>Your apps</a>
+        <hr class="menu-divider">
+        <button class="menu-item theme-danger" type="button" role="menuitem" data-logout><i class="fa-solid fa-arrow-right-from-bracket fa-fw" aria-hidden="true"></i>Log out</button>
+      </div>
+    </div>
+  </div>
+</header>
+<dialog class="card" id="navDrawer" aria-label="Navigation">
+  <div class="card-body">
+    <%- include('sidebar') %>
+  </div>
+</dialog>

@@ -149,17 +149,20 @@ Router.patch('/:id', verifyPortalToken, async (req, res) => {
             return res.status(404).json({ success: false, message: "User not found." })
         }
 
-        const { name, description, redirectUrls, scopes, providers, theme } = req.body
+        const { name, description, redirectUrls, scopes, providers, theme, status } = req.body
 
         if (redirectUrls !== undefined && !validRedirectUris(redirectUrls)) {
             return res.status(400).json({ success: false, message: "Invalid redirect URLs." })
         }
         if (scopes !== undefined && (!Array.isArray(scopes) || scopes.some(scope => !['username', 'email', 'profile', 'phone', 'address', 'birthDate'].includes(scope)))) {
-            return res.status(400).json({ success: false, message: "Invalid socpes." })
+            return res.status(400).json({ success: false, message: "Invalid scopes." })
+        }
+        if (status !== undefined && !['active', 'disabled'].includes(status)) {
+            return res.status(400).json({ success: false, message: "Invalid status." })
         }
 
         const updates = {}
-        for (const [key, value] of Object.entries({ name, description, redirectUrls, scopes, providers, theme })) {
+        for (const [key, value] of Object.entries({ name, description, redirectUrls, scopes, providers, theme, status })) {
             if (value !== undefined) updates[key] = value
         }
 
@@ -219,11 +222,8 @@ Router.put('/:id/redirects', verifyPortalToken, async (req, res) => {
         if (!req.params.id || !mongoose.isValidObjectId(req.params.id)) {
             return res.status(403).json({ success: false, message: "Malformed request url" })
         }
-        if (!Array.isArray(req.body.redirectUrls) || req.body.redirectUrls.some(url => !/^https?:\/\/\S+$/i.test(url))) {
-            return res.status(403).json({ success: false, message: "Missing required fields." })
-        }
-        if (!req.body.redirectUrls) {
-            return res.status(403).json({ success: false, message: "Missing required fields" })
+        if (!Array.isArray(req.body.redirectUrls) || !validRedirectUris(req.body.redirectUrls)) {
+            return res.status(400).json({ success: false, message: "Invalid redirect URLs." })
         }
 
         const user = await User.findById(req.user.id)
@@ -241,9 +241,6 @@ Router.put('/:id/redirects', verifyPortalToken, async (req, res) => {
 
         if (!app) {
             return res.status(404).json({ success: false, message: "No app found" })
-        }
-        if (!validRedirectUris(req.body.redirectUrls)) {
-            return res.status(400).json({ success: false, message: "Invalid redirect URLs." })
         }
         res.status(200).json({ success: true, message: "Redirect urls updated successfully." })
 
@@ -461,7 +458,7 @@ Router.get('/:id/users', verifyPortalToken, async (req, res) => {
             return res.status(404).json({ success: false, message: "App not found" })
         }
 
-        const grants = await Grant.find({ appId: req.params.id, revokedAt: null, bannedAt: null })
+        const grants = await Grant.find({ appId: req.params.id, revokedAt: null, ...Grant.notBannedFilter() })
             .populate({ path: 'userId', select: FIELDS, match: { status: 'active' } })
             .select('userId scopes -_id')
             .lean()
@@ -499,8 +496,8 @@ Router.get('/:id/users/:userId', verifyPortalToken, async (req, res) => {
         const grant = await Grant.findOne({
             appId: req.params.id,
             userId: req.params.userId,
-            revokedAt: null, 
-            bannedAt: null
+            revokedAt: null,
+            ...Grant.notBannedFilter()
         }).populate({ path: 'userId', select: FIELDS, match: { status: 'active' } })
 
         if (!grant || !grant.userId) {
@@ -529,7 +526,7 @@ Router.delete('/:id/users/:userId', verifyPortalToken, async (req, res) => {
          const grant = await Grant.findOneAndUpdate(
             { appId: req.params.id, userId: req.params.userId, revokedAt: null },
             { $set: { revokedAt: new Date() } },
-            { new: true }
+            { returnDocument: 'after' }
         )
 
         if (!grant) {
@@ -561,13 +558,27 @@ Router.post('/:id/users/:userId/ban', verifyPortalToken, async (req, res) => {
             return res.status(404).json({ success: false, message: "App not found" })
         }
 
+        let bannedUntil = null
+        if (req.body.bannedUntil !== undefined && req.body.bannedUntil !== null && req.body.bannedUntil !== '') {
+            const raw = String(req.body.bannedUntil)
+            const parsed = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(`${raw}T23:59:59.999Z`) : new Date(raw)
+            if (Number.isNaN(parsed.getTime())) {
+                return res.status(400).json({ success: false, message: "Invalid ban end date." })
+            }
+            if (parsed <= new Date()) {
+                return res.status(400).json({ success: false, message: "Ban end date must be in the future." })
+            }
+            bannedUntil = parsed
+        }
+
         const grant = await Grant.findOneAndUpdate({
             appId: req.params.id,
             userId: req.params.userId
         },
             {
                 $set: {
-                    bannedAt: new Date()
+                    bannedAt: new Date(),
+                    bannedUntil
                 }
             },
             {
@@ -583,7 +594,12 @@ Router.post('/:id/users/:userId/ban', verifyPortalToken, async (req, res) => {
             RefreshTokens.updateMany({ appId: req.params.id, userId: req.params.userId, revokedAt: null }, { $set: { revokedAt: new Date() } })
         ])
 
-        res.status(200).json({ success: true, message: "User banned successfully." })
+        res.status(200).json({
+            success: true,
+            message: bannedUntil
+                ? `User banned until ${bannedUntil.toISOString().slice(0, 10)}.`
+                : "User banned permanently."
+        })
 
     } catch (error) {
         logError(error)

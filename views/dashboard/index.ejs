@@ -1,240 +1,43 @@
-<!doctype html>
-<html lang="en" data-bs-theme="dark">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Apps - Dashboard</title>
-  <script src="https://kit.fontawesome.com/9721ff28a8.js" crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="../css/test.css">
-</head>
-<body>
-
-  <header class="app-header">
-    <div class="container-fluid d-flex align-items-center justify-content-between gap-3 py-3 px-3 px-md-4">
-
-      <div class="d-flex align-items-center gap-3">
-        <button class="btn btn-text btn-icon lg:d-none" type="button"
-                data-bs-toggle="drawer" data-bs-target="#navDrawer"
-                aria-controls="navDrawer" aria-label="Open navigation">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-        </button>
-        <a class="brand" href="#">LOGO</a>
-      </div>
-
-      <div class="d-flex align-items-center gap-3">
-        <div class="position-relative">
-          <button class="btn" type="button" data-bs-toggle="menu" aria-label="Notifications"><i class="fa-solid fa-bell"></i></button>
-          <div class="menu notif-menu">
-            <p class="notif-head mb-0">Notifications</p>
-            <button class="notif-item" type="button">
-              <span class="notif-dot" aria-hidden="true"></span>
-              <span>
-                <span class="notif-text d-block">New sign-in to app.name 1 from São Paulo, BR</span>
-                <span class="notif-time">12 min ago</span>
-              </span>
-            </button>
-            <button class="notif-item" type="button">
-              <span class="notif-dot" aria-hidden="true"></span>
-              <span>
-                <span class="notif-text d-block">app.name 2 hit 90% of its monthly request quota</span>
-                <span class="notif-time">2 h ago</span>
-              </span>
-            </button>
-            <button class="notif-item" type="button">
-              <span class="notif-dot" aria-hidden="true"></span>
-              <span>
-                <span class="notif-text d-block">Weekly report for app.name 1 is ready</span>
-                <span class="notif-time">Yesterday</span>
-              </span>
-            </button>
-          </div>
-        </div>
-
-        <div class="position-relative">
-          <button class="btn btn-text" type="button">
-            <span class="avatar theme-brand">AB</span>
-            <span class="username">user.username</span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-          </button>
-          <div class="menu">
-            <button class="menu-item" type="button">Profile</button>
-            <button class="menu-item" type="button">Settings</button>
-            <hr class="menu-divider">
-            <button class="menu-item theme-danger" type="button">Log out</button>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </header>
-
+<!DOCTYPE html>
+<html lang="en">
+<%- include('../partials/head', { title: 'Overview' }) %>
+<body data-page="dashboard">
+  <%- include('partials/menu') %>
   <div class="layout">
-
-    <nav class="sidebar" aria-label="App navigation">
-      <label class="visually-hidden" for="appSelect">Selected app</label>
-      <select class="form-control app-select mb-4" id="appSelect">
-        <option selected>app.name 1</option>
-        <option>app.name 2</option>
-        <option>app.name 3</option>
-      </select>
-
-      <ul class="sidebar-nav">
-        <li><a class="nav-link" href="#"><span class="nav-icon" aria-hidden="true"></span>Item 1</a></li>
-        <li><a class="nav-link" href="#"><span class="nav-icon" aria-hidden="true"></span>Item 2</a></li>
-        <li><a class="nav-link" href="#"><span class="nav-icon" aria-hidden="true"></span>Item 3</a></li>
-      </ul>
-
-      <hr class="sidebar-divider">
-
-      <ul class="sidebar-nav">
-        <li><a class="nav-link" href="#"><span class="nav-icon" aria-hidden="true"></span>Item 4</a></li>
-        <li><a class="nav-link" href="#"><span class="nav-icon" aria-hidden="true"></span>Item 5</a></li>
-        <li><a class="nav-link" href="#"><span class="nav-icon" aria-hidden="true"></span>Item 6</a></li>
-      </ul>
+    <nav class="sidebar d-none lg:d-block" aria-label="Navigation">
+      <%- include('partials/sidebar') %>
     </nav>
-
-    <main class="content">
-
+    <main class="p-4 p-md-5">
+      <h1 class="h4 mb-4">Overview</h1>
       <div class="grid row-gap-4 mb-4">
-        <div class="g-col-12 md:g-col-4">
-          <div class="card stat-card">
-            <div class="card-body">
-              <p class="stat-label mb-1">Active users</p>
-              <p class="stat-value mb-1">3,241</p>
-              <span class="badge badge-subtle theme-success">+12% this week</span>
-            </div>
-          </div>
-        </div>
-        <div class="g-col-12 md:g-col-4">
-          <div class="card stat-card">
-            <div class="card-body">
-              <p class="stat-label mb-1">Requests today</p>
-              <p class="stat-value mb-1">48,209</p>
-              <span class="badge badge-subtle theme-success">+8% vs yesterday</span>
-            </div>
-          </div>
-        </div>
-        <div class="g-col-12 md:g-col-4">
-          <div class="card stat-card">
-            <div class="card-body">
-              <p class="stat-label mb-1">Error rate</p>
-              <p class="stat-value mb-1">0.4%</p>
-              <span class="badge badge-subtle theme-secondary">-0.1% vs yesterday</span>
-            </div>
-          </div>
-        </div>
+        <div class="g-col-12 md:g-col-4"><div class="card"><div class="card-body">
+          <p class="text-secondary mb-1">Apps</p><p class="h3 mb-0" data-stat="apps">–</p>
+        </div></div></div>
+        <div class="g-col-12 md:g-col-4"><div class="card"><div class="card-body">
+          <p class="text-secondary mb-1">Active apps</p><p class="h3 mb-0" data-stat="active">–</p>
+        </div></div></div>
+        <div class="g-col-12 md:g-col-4"><div class="card"><div class="card-body">
+          <p class="text-secondary mb-1">Providers enabled</p><p class="h3 mb-0" data-stat="providers">–</p>
+        </div></div></div>
       </div>
-
-      <div class="card chart-card">
+      <div class="card mb-4">
         <div class="card-body">
-          <div>
-            <h2 class="h6 mb-1">Requests</h2>
-            <p class="stat-label mb-0">Last 14 days</p>
-          </div>
-          <div class="chart-wrap">
-            <canvas id="requestsChart" aria-label="Requests over the last 14 days"></canvas>
-          </div>
+          <h2 class="h6 mb-1">Get started</h2>
+          <p class="text-secondary">Create an app to get a client ID and secret, then point it to <span class="mono">/oauth/authorize</span> to start signing users in.</p>
+          <a class="btn theme-brand btn-solid btn-sm" href="/dashboard/apps">Manage apps</a>
         </div>
       </div>
-
+      <div class="card">
+        <div class="card-body">
+          <h2 class="h6 mb-1">Activity</h2>
+          <p class="text-secondary mb-0">Sign-ins over time will show up here once the analytics endpoint exists.</p>
+          <div class="d-flex align-items-center justify-content-center text-secondary" style="min-height:10rem">No data yet</div>
+        </div>
+      </div>
     </main>
   </div>
 
-  <dialog class="drawer drawer-start" tabindex="-1" id="navDrawer" aria-labelledby="navDrawerLabel">
-    <div class="drawer-header">
-      <p class="drawer-title mb-0" id="navDrawerLabel">LOGO</p>
-      <button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="Close navigation"></button>
-    </div>
-    <div class="drawer-body">
-      <label class="visually-hidden" for="appSelectDrawer">Selected app</label>
-      <select class="form-control app-select mb-4" id="appSelectDrawer">
-        <option selected>app.name 1</option>
-        <option>app.name 2</option>
-        <option>app.name 3</option>
-      </select>
-
-      <ul class="sidebar-nav">
-        <li><a class="nav-link" href="#"><span class="nav-icon" aria-hidden="true"></span>Item 1</a></li>
-        <li><a class="nav-link" href="#"><span class="nav-icon" aria-hidden="true"></span>Item 2</a></li>
-        <li><a class="nav-link" href="#"><span class="nav-icon" aria-hidden="true"></span>Item 3</a></li>
-      </ul>
-
-      <hr class="sidebar-divider">
-
-      <ul class="sidebar-nav">
-        <li><a class="nav-link" href="#"><span class="nav-icon" aria-hidden="true"></span>Item 4</a></li>
-        <li><a class="nav-link" href="#"><span class="nav-icon" aria-hidden="true"></span>Item 5</a></li>
-        <li><a class="nav-link" href="#"><span class="nav-icon" aria-hidden="true"></span>Item 6</a></li>
-      </ul>
-    </div>
-  </dialog>
-
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <script type="module" src="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
-    (function () {
-      var ctx = document.getElementById('requestsChart');
-      if (!ctx || typeof Chart === 'undefined') return;
-
-      var labels = [];
-      var values = [3120, 3480, 3210, 3890, 4120, 3950, 4360, 4080, 4520, 4890, 4710, 5230, 5480, 5610];
-      var today = new Date();
-      for (var i = 13; i >= 0; i--) {
-        var d = new Date(today);
-        d.setDate(today.getDate() - i);
-        labels.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-      }
-
-      var gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 320);
-      gradient.addColorStop(0, 'rgba(232, 137, 12, .28)');
-      gradient.addColorStop(1, 'rgba(232, 137, 12, 0)');
-
-      new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: 'Requests',
-            data: values,
-            borderColor: '#e8890c',
-            backgroundColor: gradient,
-            fill: true,
-            tension: .35,
-            pointRadius: 0,
-            pointHoverRadius: 4,
-            borderWidth: 2
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          interaction: { mode: 'index', intersect: false },
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              backgroundColor: '#1c232e',
-              borderColor: '#2e3947',
-              borderWidth: 1,
-              titleColor: '#e8edf4',
-              bodyColor: '#c9d1db',
-              padding: 10
-            }
-          },
-          scales: {
-            x: {
-              grid: { display: false },
-              ticks: { color: '#9aa4b2', maxTicksLimit: 7 }
-            },
-            y: {
-              grid: { color: 'rgba(255, 255, 255, .06)' },
-              ticks: { color: '#9aa4b2' },
-              beginAtZero: true
-            }
-          }
-        }
-      });
-    })();
-  </script>
+  <%- include('../partials/scripts') %>
+  <script src="/js/dashboard.js"></script>
 </body>
 </html>
