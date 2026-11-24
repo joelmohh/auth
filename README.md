@@ -26,7 +26,7 @@ This project's original aim (and hopefully once it's completed it will achieve i
 
 ## How to run it locally?
 
-Prerequisites: Node.js 22+ and MongoDB (local or Atlas).
+Prerequisites: Node.js 20.19+ and MongoDB (local or Atlas).
 
 1. Clone it
 ```bash
@@ -37,7 +37,7 @@ git clone https://github.com/joelmohh/auth
 4. Run it with `node app.js`
 5. Try it on `http://localhost:3000` or your chosen port.
 
-## Testing (soon)
+## Testing
 Check [DOCS.md](DOCS.md) for the full testing guide: setup from scratch, how to test every flow and what to expect at each step.
 
 ## Want to try it out?

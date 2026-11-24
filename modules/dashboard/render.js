@@ -51,8 +51,6 @@ async function load(req) {
         data.sessions = await Session.find({ userId: user._id, revokedAt: null, appId: null }).select('_id userAgent createdAt').lean();
         const grants = await Grant.find({ userId: user._id, revokedAt: null, bannedAt: null }).select('appId scopes lastUsedAt').lean();
         const authorized = await App.find({ _id: { $in: grants.map(grant => grant.appId) } }).select('name').lean();
-        const sec=await require('../../models/Security').findOne({userId:user._id}).select('passkeys.name passkeys.createdAt totp.enabled').lean();
-        data.security={totpEnabled:Boolean(sec?.totp?.enabled),passkeys:(sec?.passkeys||[]).map(k=>({_id:k._id,name:k.name,createdAt:k.createdAt}))};
         data.authorizations = grants.map(grant => ({ appId: grant.appId, scopes: grant.scopes, app: authorized.find(app => String(app._id) === String(grant.appId)) }));
     }
     if (req.path === '/dashboard') {

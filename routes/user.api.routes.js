@@ -121,8 +121,6 @@ Router.delete('/', verifyToken, async (req, res) => {
                 revokedBy: 'system'
             })
         await Grant.deleteMany({ userId: req.user.id })
-        await require('../models/Security').deleteMany({ userId: req.user.id })
-        await require('../models/SecurityChallenge').deleteMany({ userId: req.user.id })
         await AuthCode.deleteMany({ userId: req.user.id })
         await RefreshTokens.updateMany({ userId: req.user.id, revokedAt: null }, { $set: { revokedAt: new Date() } })
         res.status(200).json({ success: true, message: "Account scheduled to deletation successfully." })
@@ -271,5 +269,28 @@ Router.get('/export', verifyToken, async (req, res) => {
         res.status(500).json({ success: false, message: "Invalid server error." })
     }
 })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 module.exports = Router

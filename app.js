@@ -15,7 +15,6 @@ mongoose.connect(process.env.MONGO_URI)
 const app = express();
 app.disable('x-powered-by')
 app.use(express.json());
-app.set('trust proxy', 1); 
 app.use(express.urlencoded({ extended: false}))
 app.use((req, res, next) => {
     req.body ??= {}
@@ -34,7 +33,6 @@ app.use('/api/apps', apiLimiter, validationModule, require('./routes/apps.api.ro
 app.use('/api/me', apiLimiter, validationModule, require('./routes/user.api.routes'));
 app.use('/api/analytics', apiLimiter, require('./routes/analytics.api.routes'));
 app.use('/api/images', apiLimiter, require('./routes/images.api.routes'));
-app.use('/api/security', apiLimiter, require('./routes/security.api.routes'));
 
 app.get('/teapot', (req, res) => {
     res.status(418).json({success: true, message:"I am a healthy teapot"})

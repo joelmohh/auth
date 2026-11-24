@@ -59,18 +59,12 @@ document.addEventListener('DOMContentLoaded', () => {
         busy(btn, true);
         const r = await Api.post('/api/auth/verify-otp', { email, otp: code, purpose: 'verify_email' }, false);
         busy(btn, false);
-        if (r.mfaRequired) { location.href='/login?mfa=1'; return; }
         if (!r.success) return showToast(r.message, 'error');
         location.href = postAuthRedirect('/dashboard');
     }
 
     if (page === 'login') {
         const form = $('#loginForm');
-        let mfaToken='';
-        const showMfa=token=>{mfaToken=token||'';$('#loginView').classList.add('d-none');$('[data-otp-panel]').classList.add('d-none');$('#mfaPanel').hidden=false;$('#mfaCode').focus();};
-        if(new URLSearchParams(location.search).has('mfa'))showMfa();
-        $('#mfaForm').addEventListener('submit',async event=>{event.preventDefault();const button=event.target.querySelector('button');busy(button,true);const r=await Api.post('/api/security/login/totp',{token:mfaToken,code:$('#mfaCode').value.trim()},false);$('#mfaCode').value='';busy(button,false);if(r.success)location.href=postAuthRedirect(r.redirectURL||'/dashboard');else showToast(r.message,'error');});
-        $('#loginPasskey').addEventListener('click',async event=>{const button=event.currentTarget;busy(button,true);try{if(!window.PublicKeyCredential)throw Error('Passkeys are not supported in this browser.');const r=await Api.post('/api/security/passkeys/authenticate/options',{email:form.elements.email.value.trim()},false);if(!r.success)throw Error(r.message);const response=await SimpleWebAuthnBrowser.startAuthentication({optionsJSON:r.data.options});const result=await Api.post('/api/security/passkeys/authenticate/verify',{token:r.data.token,response},false);if(result.mfaRequired){showMfa(result.data.token);return;}if(!result.success)throw Error(result.message);location.href=postAuthRedirect(result.redirectURL||'/dashboard');}catch(error){showToast(error.name==='NotAllowedError'?'Passkey canceled or timed out.':error.message,'error');}finally{busy(button,false);}});
         const googleLink = $('[data-google-login]');
         const back = new URLSearchParams(location.search).get('redirect');
         if (googleLink && back && back.startsWith('/') && !back.startsWith('//')) {
@@ -88,7 +82,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const r = await Api.post('/api/auth/login', { email, password: form.elements.password.value }, false);
             busy(btn, false);
 
-            if (r.mfaRequired) { showMfa(r.data.token); return; }
             if (r.success) return (location.href = postAuthRedirect(r.redirectURL || '/dashboard'));
             if (r.verified === false) {
                 $('#loginView').classList.add('d-none');
