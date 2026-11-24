@@ -57,7 +57,7 @@ const appSchema = new mongoose.Schema({
         }
     }],
     theme: {
-        primaryColor: { type: String, default: "#FFF"}, //CHANGE LATER
+        primaryColor: { type: String, default: "#FFF"}, 
         logoUrl: String,
         bannerUrl: String,
         darkMode: { type: Boolean, default: true }

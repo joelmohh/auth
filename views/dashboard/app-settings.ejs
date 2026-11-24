@@ -7,28 +7,25 @@
     <nav class="sidebar d-none lg:d-block" aria-label="Navigation">
       <%- include('partials/sidebar') %>
     </nav>
-    <main class="p-4 p-md-5" style="max-width:52rem">
+    <main class="dashboard-main">
       <a href="/dashboard/apps" class="back-link mb-3"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to apps</a>
-      <h1 class="h4 mb-4">Settings — <span data-app-name>app</span></h1>
+      <h1 class="h4 mb-4">Settings — <span data-app-name><%= dashboard.selectedApp.name %></span></h1>
 
       <div class="card mb-4"><div class="card-body">
         <h2 class="h6 mb-3">General</h2>
         <form id="generalForm" novalidate>
           <div class="form-field">
             <label for="sName" class="form-label">Name</label>
-            <input type="text" class="form-control" id="sName" name="name" required minlength="2" maxlength="64">
+            <input type="text" class="form-control" id="sName" name="name" required minlength="2" maxlength="64" value="<%= dashboard.selectedApp.name %>">
             <div class="invalid-feedback">Enter a name (2–64 characters).</div>
           </div>
           <div class="form-field mt-3">
             <label for="sDesc" class="form-label">Description</label>
-            <textarea class="form-control" id="sDesc" name="description" rows="2" maxlength="280"></textarea>
+            <textarea class="form-control" id="sDesc" name="description" rows="2" maxlength="280"><%= dashboard.selectedApp.description || '' %></textarea>
           </div>
           <div class="form-field mt-3">
             <label for="sStatus" class="form-label">Status</label>
-            <select class="form-control" id="sStatus" name="status" style="width:auto">
-              <option value="active">Active</option>
-              <option value="disabled">Disabled</option>
-            </select>
+            <label class="status-toggle"><input type="checkbox" id="sStatus" name="status" role="switch" <%= dashboard.selectedApp.status === 'active' ? 'checked' : '' %>><span>App enabled</span></label>
             <p class="form-text mt-1 mb-0">A disabled app cannot start new authorizations.</p>
           </div>
           <button type="submit" class="btn theme-brand btn-solid btn-sm mt-4">Save changes</button>
@@ -37,9 +34,9 @@
 
       <div class="card mb-4"><div class="card-body">
         <h2 class="h6 mb-1">Redirect URLs</h2>
-        <p class="form-text mb-3">One per line. HTTPS only, except localhost. Exact match, no wildcards or fragments.</p>
+        <p class="form-text mb-3">Add each callback separately. HTTPS only, except localhost. Exact match, no wildcards or fragments. Up to 20 URLs.</p>
         <form id="redirectsForm" novalidate>
-          <textarea class="form-control mono" id="sRedirects" rows="3" placeholder="https://yourapp.com/callback"></textarea>
+          <div id="redirectInputs" class="redirect-inputs"><% (dashboard.selectedApp.redirectUrls?.length ? dashboard.selectedApp.redirectUrls : ['']).forEach(url => { %><div class="redirect-row"><div class="form-field"><input type="url" class="form-control mono" value="<%= url %>" placeholder="https://yourapp.com/callback" aria-label="Redirect URL"></div><button type="button" class="btn btn-outline btn-sm">Remove</button></div><% }) %></div><button class="btn btn-outline btn-sm mt-3" type="button" id="addRedirect">Add redirect URL</button>
           <button type="submit" class="btn theme-brand btn-solid btn-sm mt-3">Save redirect URLs</button>
         </form>
       </div></div>
@@ -48,21 +45,21 @@
         <h2 class="h6 mb-1">Scopes</h2>
         <p class="form-text mb-3">The information this app is allowed to request from users.</p>
         <form id="scopesForm">
-          <div class="d-flex flex-wrap gap-3" id="scopeChecks"></div>
+          <div class="d-flex flex-wrap gap-3" id="scopeChecks"><% ['username','email','profile','phone','address','birthDate'].forEach(scope => { %><div class="form-field"><input type="checkbox" class="check" id="scope-<%= scope %>" value="<%= scope %>" <%= dashboard.selectedApp.scopes?.includes(scope) ? 'checked' : '' %>><div class="form-field-content"><label for="scope-<%= scope %>"><%= scope %></label></div></div><% }) %></div>
           <button type="submit" class="btn theme-brand btn-solid btn-sm mt-3">Save scopes</button>
         </form>
       </div></div>
 
       <div class="card mb-4"><div class="card-body">
         <h2 class="h6 mb-3">Appearance</h2>
-        <form id="appearanceForm">
+        <form id="appearanceForm" novalidate><div class="form-field mb-3"><label class="form-label" for="sLogoFile">App icon image file</label><input id="sLogoFile" class="form-control" type="file" accept="image/png,image/jpeg,image/webp"><button type="button" class="btn btn-outline btn-sm mt-2" data-image-upload="sLogo" data-image-field="logoUrl"><i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i> Upload and save image</button><p class="form-text" data-image-status="sLogo" role="status">PNG, JPEG or WebP, 512 bytes to 5 MB. Upload saves immediately to Square Cloud Blob. Images are viewable by anyone with the image link.</p><label class="form-label" for="sLogo">App icon URL</label><input type="url" class="form-control" id="sLogo" maxlength="512" placeholder="https://…" value="<%= dashboard.selectedApp.theme?.logoUrl || '' %>"><div class="invalid-feedback">Use an HTTPS image URL.</div></div><div class="form-field mb-3"><label class="form-label" for="sBannerFile">App banner image file</label><input id="sBannerFile" class="form-control" type="file" accept="image/png,image/jpeg,image/webp"><button type="button" class="btn btn-outline btn-sm mt-2" data-image-upload="sBanner" data-image-field="bannerUrl"><i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i> Upload and save image</button><p class="form-text" data-image-status="sBanner" role="status">PNG, JPEG or WebP, 512 bytes to 5 MB. Upload saves immediately to Square Cloud Blob. Images are viewable by anyone with the image link.</p><label class="form-label" for="sBanner">Banner URL</label><input type="url" class="form-control" id="sBanner" maxlength="512" placeholder="https://…" value="<%= dashboard.selectedApp.theme?.bannerUrl || '' %>"><div class="invalid-feedback">Use an HTTPS image URL.</div></div><div class="appearance-preview"><div class="app-banner" data-preview-banner><% if (h.imageUrl(dashboard.selectedApp.theme?.bannerUrl)) { %><img class="banner-image" src="<%= h.imageUrl(dashboard.selectedApp.theme.bannerUrl) %>" alt=""><% } %></div><span class="app-avatar" data-preview-avatar><%- include('partials/avatar', {name:dashboard.selectedApp.name, image:dashboard.selectedApp.theme?.logoUrl}) %></span><p class="form-text">Upload a file above, or use an HTTPS URL as fallback. Uploads save immediately.</p></div>
           <div class="d-flex flex-wrap gap-3 align-items-end">
             <div class="form-field">
               <label for="sColor" class="form-label">Primary color</label>
-              <input type="color" class="form-control" id="sColor" style="width:4rem;height:2.5rem;padding:.25rem">
+              <input type="color" class="form-control" id="sColor" style="width:4rem;height:2.5rem;padding:.25rem" value="<%= /^#[0-9a-f]{6}$/i.test(dashboard.selectedApp.theme?.primaryColor || '') ? dashboard.selectedApp.theme.primaryColor : '#f2b23e' %>">
             </div>
             <div class="form-field">
-              <input type="checkbox" class="check" id="sDark">
+              <input type="checkbox" class="check" id="sDark" <%= dashboard.selectedApp.theme?.darkMode !== false ? 'checked' : '' %>>
               <div class="form-field-content"><label for="sDark">Dark mode on consent screen</label></div>
             </div>
           </div>
@@ -117,6 +114,7 @@
     </div>
   </dialog>
 
+  <%- include('partials/data') %>
   <%- include('../partials/scripts') %>
   <script src="/js/dashboard.js"></script>
 </body>

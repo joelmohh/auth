@@ -94,6 +94,7 @@ Router.post('/login', async (req, res) => {
         }
 
 
+        if (await require('../modules/auth/security').enabled(user.id)) { const token=await require('../modules/auth/security').beginLogin(user,req,res); return res.json({success:false,mfaRequired:true,data:{token},message:'Enter your authenticator or recovery code.'}); }
         const accessToken = await issueSession(user, req, res, 'login');
         res.status(200).json({ success: true, message: "Login successful.", accessToken: accessToken.accessToken, redirectURL: '/dashboard' });
 
@@ -154,6 +155,7 @@ Router.post('/verify-otp', async (req, res) => {
 
         await Otp.deleteOne({ userId: user._id, purpose });
 
+        if (await require('../modules/auth/security').enabled(user.id)) { const token=await require('../modules/auth/security').beginLogin(user,req,res); return res.json({success:false,mfaRequired:true,data:{token},message:'Enter your authenticator or recovery code.'}); }
         const tokens = await issueSession(user, req, res, 'register');
 
         res.status(200).json({ success: true, message: "OTP verified successfully.", accessToken: tokens.accessToken });
@@ -652,6 +654,7 @@ Router.get('/google/callback', async (req, res) => {
             await user.save();
         }
 
+        if (await require('../modules/auth/security').enabled(user.id)) { await require('../modules/auth/security').beginLogin(user,req,res,postLoginRedirect); return res.redirect('/login?mfa=1'); }
         await issueSession(user, req, res, 'google');
         res.redirect(postLoginRedirect);
     } catch (error) {

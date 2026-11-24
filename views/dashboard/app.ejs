@@ -7,22 +7,18 @@
     <nav class="sidebar d-none lg:d-block" aria-label="Navigation">
       <%- include('partials/sidebar') %>
     </nav>
-    <main class="p-4 p-md-5" id="appMain">
-      <p class="text-secondary">Loading…</p>
-    </main>
-  </div>
-
-  <template id="appTpl">
+    <main class="dashboard-main" id="appMain">
+      
     <a href="/dashboard/apps" class="back-link mb-3"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to apps</a>
     <div class="card overflow-hidden mb-4">
-      <div class="app-banner app-banner-lg" data-banner></div>
+      <div class="app-banner app-banner-lg" data-banner><% if (h.imageUrl(dashboard.selectedApp.theme?.bannerUrl)) { %><img class="banner-image" src="<%= h.imageUrl(dashboard.selectedApp.theme.bannerUrl) %>" alt=""><% } %></div>
       <div class="card-body d-flex flex-wrap align-items-center gap-3 pt-2">
-        <span class="app-avatar app-avatar-lg" data-avatar></span>
+        <span class="app-avatar app-avatar-lg" data-avatar><%- include('partials/avatar', {name:dashboard.selectedApp.name, image:dashboard.selectedApp.theme?.logoUrl}) %></span>
         <div class="flex-1">
-          <h1 class="h4 mb-0" data-name></h1>
-          <p class="text-secondary mb-0" data-description></p>
+          <h1 class="h4 mb-0" data-name><%= dashboard.selectedApp.name %></h1>
+          <p class="text-secondary mb-0" data-description><%= dashboard.selectedApp.description || 'No description' %></p>
         </div>
-        <span class="badge" data-status></span>
+        <span class="badge <%= dashboard.selectedApp.status === 'active' ? 'badge-success' : 'badge-danger' %>" data-status><%= dashboard.selectedApp.status %></span>
       </div>
     </div>
 
@@ -32,38 +28,43 @@
           <h2 class="h6 mb-3">Credentials</h2>
           <label class="form-label" for="cid">Client ID</label>
           <div class="d-flex gap-2 mb-3">
-            <input class="form-control mono" id="cid" readonly data-client-id>
+            <input class="form-control mono" id="cid" readonly data-client-id value="<%= dashboard.selectedApp.clientId %>">
             <button class="btn btn-outline btn-sm" type="button" data-copy="cid"><i class="fa-regular fa-copy" aria-hidden="true"></i> Copy</button>
           </div>
           <p class="form-text mb-0">
             The client secret is only shown when the app is created or the secret is rotated.
-            You can rotate it in <a href="#" data-link-settings>settings</a>.
+            You can rotate it in <a href="/dashboard/apps/<%= dashboard.selectedApp._id %>/settings" data-link-settings>settings</a>.
           </p>
         </div></div>
       </div>
       <div class="g-col-12 lg:g-col-6">
         <div class="card h-100"><div class="card-body">
           <h2 class="h6 mb-3">Configuration</h2>
-          <p class="mb-1"><span class="text-secondary">Scopes:</span> <span data-scopes></span></p>
-          <p class="mb-1"><span class="text-secondary">Redirect URLs:</span> <span data-redirects></span></p>
-          <p class="mb-0"><span class="text-secondary">Created:</span> <span data-created></span></p>
+          <p class="mb-1"><span class="text-secondary">Scopes:</span> <span data-scopes><%= dashboard.selectedApp.scopes?.join(', ') || 'none' %></span></p>
+          <p class="mb-1"><span class="text-secondary">Redirect URLs:</span> <span data-redirects><%= dashboard.selectedApp.redirectUrls?.join(', ') || 'none' %></span></p>
+          <p class="mb-0"><span class="text-secondary">Created:</span> <span data-created><%= h.fmtDate(dashboard.selectedApp.createdAt) %></span></p>
         </div></div>
       </div>
       <div class="g-col-12 md:g-col-6">
-        <a class="card h-100 text-decoration-none" data-link-users style="color:inherit"><div class="card-body">
+        <a class="card h-100 text-decoration-none" href="/dashboard/apps/<%= dashboard.selectedApp._id %>/users" data-link-users style="color:inherit"><div class="card-body">
           <h2 class="h6 mb-1"><i class="fa-solid fa-users me-2" aria-hidden="true"></i>Users</h2>
           <p class="text-secondary mb-0">See who authorized this app, revoke access or ban users.</p>
         </div></a>
       </div>
       <div class="g-col-12 md:g-col-6">
-        <a class="card h-100 text-decoration-none" data-link-settings style="color:inherit"><div class="card-body">
+        <a class="card h-100 text-decoration-none" href="/dashboard/apps/<%= dashboard.selectedApp._id %>/settings" data-link-settings style="color:inherit"><div class="card-body">
           <h2 class="h6 mb-1"><i class="fa-solid fa-gear me-2" aria-hidden="true"></i>Settings</h2>
           <p class="text-secondary mb-0">Edit name, redirect URLs, scopes, appearance, rotate the secret or delete the app.</p>
         </div></a>
       </div>
     </div>
-  </template>
+<%- include('partials/integration') %>
+    </main>
+  </div>
 
+
+
+  <%- include('partials/data') %>
   <%- include('../partials/scripts') %>
   <script src="/js/dashboard.js"></script>
 </body>

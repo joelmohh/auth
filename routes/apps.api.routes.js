@@ -458,15 +458,16 @@ Router.get('/:id/users', verifyPortalToken, async (req, res) => {
             return res.status(404).json({ success: false, message: "App not found" })
         }
 
-        const grants = await Grant.find({ appId: req.params.id, revokedAt: null, ...Grant.notBannedFilter() })
+        const grants = await Grant.find({ appId: req.params.id, $or: [{ revokedAt: null }, { bannedAt: { $ne: null } }] })
             .populate({ path: 'userId', select: FIELDS, match: { status: 'active' } })
-            .select('userId scopes -_id')
+            .select('userId scopes bannedAt bannedUntil -_id')
             .lean()
 
         const data = grants
             .filter(g => g.userId)
             .map(g => ({
                 scopes: g.scopes,
+                banned: Grant.banIsActive(g), bannedUntil: g.bannedUntil,
                 user: pickByScopes(g.userId, g.scopes)
             }))
 
@@ -606,5 +607,14 @@ Router.post('/:id/users/:userId/ban', verifyPortalToken, async (req, res) => {
         res.status(500).json({ success: false, message: "Internal server error." })
     }
 })
+
+Router.post('/:id/users/:userId/unban', verifyPortalToken, async (req, res) => {
+    try {
+        if (!mongoose.isValidObjectId(req.params.id) || !mongoose.isValidObjectId(req.params.userId)) return res.status(400).json({success:false,message:'Invalid application or user.'});
+        if (!await App.exists({_id:req.params.id,ownerId:req.user.id})) return res.status(404).json({success:false,message:'App not found.'});
+        const result = await Grant.updateOne({appId:req.params.id,userId:req.params.userId,bannedAt:{$ne:null}},{$set:{bannedAt:null,bannedUntil:null}});
+        res.status(result.matchedCount ? 200 : 404).json({success:Boolean(result.matchedCount),message:result.matchedCount ? 'User unbanned. They can authorize again. Revoked sessions stay revoked.' : 'Banned user not found.'});
+    } catch { res.status(500).json({success:false,message:'Could not unban user.'}); }
+});
 
 module.exports = Router;

@@ -53,34 +53,42 @@ document.addEventListener('DOMContentLoaded', async () => {
         location.href = '/';
     }));
 
-    const [me, appsRes] = await Promise.all([Api.get('/api/me'), Api.get('/api/apps')]);
+    const initial = JSON.parse($('#dashboardData').textContent);
+    const me = { success: true, data: initial.user }, appsRes = { success: true, data: initial.apps };
     const user = me.data || {};
-    const label = user.profile?.displayName || user.username || '';
-    $$('[data-user-name]').forEach((e) => (e.textContent = user.username || ''));
-    $$('[data-user-initials]').forEach((e) => fillAvatar(e, label, user.profile?.avatarUrl));
+
     if (!appsRes.success) showToast(appsRes.message || 'Could not load your apps.', 'error');
     const apps = appsRes.data || [];
 
     const urlAppId = location.pathname.match(/\/apps\/([a-f0-9]{24})/)?.[1];
-    const currentId = urlAppId || localStorage.getItem('appId') || apps[0]?._id;
+    const remembered = localStorage.getItem('appId');
+    if (remembered && !apps.some(a => a._id === remembered)) localStorage.removeItem('appId');
+    const currentId = apps.some(a => a._id === urlAppId) ? urlAppId : '';
+    $$('[data-app-context]').forEach(el => { el.hidden = false; });
     $$('[data-app-select]').forEach((sel) => {
-        apps.forEach((a) => sel.add(new Option(a.name, a._id, false, a._id === currentId)));
-        if (!apps.length) sel.add(new Option('No apps yet', ''));
+        
+        
+        sel.disabled = !apps.length;
         sel.addEventListener('change', () => {
+            if ($$('form').some(form => form.dataset.dirty) && !confirm('Leave this page and discard unsaved changes?')) { sel.value = currentId; return; }
+            if (!sel.value) { localStorage.removeItem('appId'); location.href = '/dashboard'; return; }
             localStorage.setItem('appId', sel.value);
-            if (sel.value) location.href = `/dashboard/apps/${sel.value}`;
+            if (sel.value) {
+                const tail = location.pathname.endsWith('/users') ? '/users' : location.pathname.endsWith('/settings') ? '/settings' : location.hash;
+                location.href = `/dashboard/apps/${sel.value}${tail}`;
+            }
         });
     });
     $$('[data-app-link]').forEach((a) => {
         if (currentId) {
             const sub = a.dataset.appLink;
-            a.href = sub ? `/dashboard/apps/${currentId}/${sub}` : `/dashboard/apps/${currentId}`;
+            a.href = sub ? `/dashboard/apps/${currentId}${sub.startsWith('#') ? '' : '/'}${sub}` : `/dashboard/apps/${currentId}`;
         } else {
-            a.setAttribute('aria-disabled', 'true');
+            a.setAttribute('aria-disabled', 'true'); a.removeAttribute('href');
         }
     });
     $$('.nav-link').forEach((a) => {
-        const active = a.pathname === location.pathname;
+        const active = a.pathname === location.pathname && (a.hash ? a.hash === location.hash : !location.hash);
         a.classList.toggle('active', active);
         if (active) a.setAttribute('aria-current', 'page');
         else a.removeAttribute('aria-current');
@@ -97,19 +105,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         return new bootstrap.Datepicker(el, options);
     }
 
-    if (page === 'dashboard') {
-        const set = (k, v) => $$(`[data-stat=${k}]`).forEach((e) => (e.textContent = v));
-        set('apps', apps.length);
-        set('active', apps.filter((a) => a.status === 'active').length);
-        set('providers', apps.reduce((n, a) => n + (a.providers || []).filter((p) => p.enabled).length, 0));
-    }
-
     if (page === 'apps') {
         const PER = 6;
         const grid = $('#appGrid'), pager = $('#pager'), empty = $('#empty');
         const st = { q: '', status: '', sort: 'az', page: 1 };
 
-        function render() {
+        function render(initialRender = false) {
             let list = apps.filter((a) =>
                 a.name.toLowerCase().includes(st.q) && (!st.status || a.status === st.status));
             list.sort((a, b) => a.name.localeCompare(b.name) * (st.sort === 'az' ? 1 : -1));
@@ -118,9 +119,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             st.page = Math.min(st.page, pages);
             const slice = list.slice((st.page - 1) * PER, st.page * PER);
 
-            grid.replaceChildren(...slice.map((a) => {
+            if (!initialRender) grid.replaceChildren(...slice.map((a) => {
                 const el = $('#appTpl').content.cloneNode(true);
                 $('[data-name]', el).textContent = a.name;
+                const desc = $('[data-description]', el); if (desc) desc.textContent = a.description || 'Configure authentication for this app.';
                 const badge = $('[data-status]', el);
                 badge.textContent = a.status;
                 badge.classList.add(a.status === 'active' ? 'badge-success' : 'badge-danger');
@@ -153,7 +155,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         $('#search').addEventListener('input', (e) => { st.q = e.target.value.trim().toLowerCase(); st.page = 1; render(); });
         $('#statusFilter').addEventListener('change', (e) => { st.status = e.target.value; st.page = 1; render(); });
         $('#sortBy').addEventListener('change', (e) => { st.sort = e.target.value; render(); });
-        render();
+        if (apps.length > PER) render(true);
 
         const dlg = $('#newAppDialog'), form = $('#newAppForm');
         $('#newAppBtn').addEventListener('click', () => {
@@ -173,6 +175,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!r.success) return showToast(r.message, 'error');
 
             apps.push(r.data);
+            localStorage.setItem('appId', r.data._id);
+            $$('[data-app-select]').forEach(sel => { sel.replaceChildren(new Option('Select app', '', true, true), ...apps.map(a => new Option(a.name, a._id))); sel.disabled = false; });
+            $('#onboarding')?.setAttribute('hidden', '');
             render();
             $('#clientId').value = r.data.clientId;
             $('#clientSecret').value = r.data.clientSecret || '';
@@ -187,29 +192,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (page === 'app') {
-        const r = await Api.get(`/api/apps/${urlAppId}`);
+        const a = initial.selectedApp;
         const main = $('#appMain');
-        if (!r.success) {
-            main.replaceChildren(Object.assign(document.createElement('p'), { className: 'text-secondary', textContent: r.message || 'App not found.' }));
-            return;
-        }
-        const a = r.data;
         localStorage.setItem('appId', a._id);
-        const el = $('#appTpl').content.cloneNode(true);
-        fillAvatar($('[data-avatar]', el), a.name, a.theme?.logoUrl);
-        if (a.theme?.bannerUrl) applyBanner($('[data-banner]', el), a.theme.bannerUrl);
-        $('[data-name]', el).textContent = a.name;
-        $('[data-description]', el).textContent = a.description || 'No description';
-        const badge = $('[data-status]', el);
-        badge.textContent = a.status;
-        badge.classList.add(a.status === 'active' ? 'badge-success' : 'badge-danger');
-        $('[data-client-id]', el).value = a.clientId;
-        $('[data-scopes]', el).textContent = a.scopes?.length ? a.scopes.join(', ') : 'none';
-        $('[data-redirects]', el).textContent = a.redirectUrls?.length ? a.redirectUrls.join(', ') : 'none';
-        $('[data-created]', el).textContent = fmtDate(a.createdAt);
-        $$('[data-link-users]', el).forEach((x) => (x.href = `/dashboard/apps/${a._id}/users`));
-        $$('[data-link-settings]', el).forEach((x) => (x.href = `/dashboard/apps/${a._id}/settings`));
-        main.replaceChildren(el);
+        initIntegration(a, main);
         $$('[data-copy]').forEach((b) => b.addEventListener('click', async () => {
             try { await navigator.clipboard.writeText($(`#${b.dataset.copy}`).value); showToast('Copied.', 'success'); }
             catch { showToast('Could not copy. Select and copy it manually.', 'warning'); }
@@ -217,13 +203,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (page === 'appUsers') {
+        const search = document.createElement('input'); search.type = 'search'; search.className = 'form-control mb-3'; search.placeholder = 'Search users'; search.setAttribute('aria-label', 'Search users');
+        $('.users-table').closest('.card').before(search);
+        search.addEventListener('input', () => $$('#usersBody tr').forEach(row => { row.hidden = !row.textContent.toLowerCase().includes(search.value.toLowerCase()); }));
         const body = $('#usersBody'), empty = $('#emptyUsers');
         const card = body.closest('.card');
         const banDialog = $('#banDialog');
         const banPicker = makeDatepicker($('#banPicker'), { min: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10), inline: true });
         let pendingBan = null;
 
-        function userRow({ user, scopes }) {
+        function userRow({ user, scopes, banned, bannedUntil }) {
             const tr = document.createElement('tr');
             const name = user.username || user.email || user.id;
             const detail = user.email && user.username ? user.email : '';
@@ -239,6 +228,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             nameEl.className = 'user-name';
             nameEl.textContent = user.profile?.displayName || name;
             who.append(nameEl);
+            if (banned) { const badge=document.createElement('span'); badge.className='badge badge-danger'; badge.textContent=bannedUntil ? `Banned until ${fmtDate(bannedUntil)}` : 'Banned'; who.append(badge); }
             if (detail) {
                 const mail = document.createElement('div');
                 mail.className = 'user-email';
@@ -276,6 +266,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             revokeBtn.className = 'btn btn-text btn-sm';
             revokeBtn.innerHTML = '<i class="fa-solid fa-user-minus" aria-hidden="true"></i> Revoke';
             revokeBtn.addEventListener('click', async () => {
+                if (!confirm(`Revoke ${name}'s current authorization? They can authorize again.`)) return;
                 revokeBtn.disabled = true;
                 const rr = await send('DELETE', `/api/apps/${urlAppId}/users/${user.id}`);
                 showToast(rr.message, rr.success ? 'success' : 'error');
@@ -284,8 +275,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const banBtn = document.createElement('button');
             banBtn.type = 'button';
             banBtn.className = 'btn btn-text theme-danger btn-sm';
-            banBtn.innerHTML = '<i class="fa-solid fa-gavel" aria-hidden="true"></i> Ban';
-            banBtn.addEventListener('click', () => {
+            banBtn.innerHTML = banned ? '<i class="fa-solid fa-unlock" aria-hidden="true"></i> Unban' : '<i class="fa-solid fa-gavel" aria-hidden="true"></i> Ban';
+            banBtn.addEventListener('click', async () => {
+                if (banned) { banBtn.disabled=true; const rr=await send('POST',`/api/apps/${urlAppId}/users/${user.id}/unban`,{}); showToast(rr.message,rr.success?'success':'error'); await load(); return; }
                 pendingBan = { id: user.id, name };
                 $('[data-ban-name]', banDialog).textContent = name;
                 banPicker?.setSelectedDates([]);
@@ -299,6 +291,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         async function load() {
             const r = await Api.get(`/api/apps/${urlAppId}/users`);
+            if (!r.success) { body.replaceChildren(); const row = body.insertRow(); row.insertCell().textContent = r.message || 'Could not load users. Reload to retry.'; empty.classList.add('d-none'); card.querySelector('.table-wrap').classList.remove('d-none'); return; }
             const rows = r.data || [];
             empty.classList.toggle('d-none', rows.length > 0);
             card.querySelector('.table-wrap').classList.toggle('d-none', rows.length === 0);
@@ -317,38 +310,42 @@ document.addEventListener('DOMContentLoaded', async () => {
             load();
         });
 
-        const appInfo = await Api.get(`/api/apps/${urlAppId}`);
-        if (appInfo.success) $$('[data-app-name]').forEach((e) => (e.textContent = appInfo.data.name));
-        load();
+
+        $$('#usersBody tr[data-user-id]').forEach(row => { const item = initial.users.find(item => item.user.id === row.dataset.userId); if (!item) return; const bound = userRow(item); const oldButtons = [...row.querySelectorAll('button')]; [...bound.querySelectorAll('button')].forEach((button,index) => oldButtons[index]?.replaceWith(button)); });
     }
 
     if (page === 'appSettings') {
         const ALL_SCOPES = ['username', 'email', 'profile', 'phone', 'address', 'birthDate'];
-        const r = await Api.get(`/api/apps/${urlAppId}`);
+        const r = {success:true, data:initial.selectedApp};
         if (!r.success) { showToast(r.message || 'App not found.', 'error'); return; }
         const app = r.data;
         localStorage.setItem('appId', app._id);
-        $$('[data-app-name]').forEach((e) => (e.textContent = app.name));
 
-        $('#sName').value = app.name || '';
-        $('#sDesc').value = app.description || '';
-        $('#sStatus').value = app.status || 'active';
-        $('#sRedirects').value = (app.redirectUrls || []).join('\n');
-        $('#sColor').value = /^#[0-9a-f]{6}$/i.test(app.theme?.primaryColor || '') ? app.theme.primaryColor : '#f2b23e';
-        $('#sDark').checked = app.theme?.darkMode !== false;
 
-        $('#scopeChecks').replaceChildren(...ALL_SCOPES.map((s) => {
-            const wrap = document.createElement('div');
-            wrap.className = 'form-field';
-            const cb = Object.assign(document.createElement('input'), { type: 'checkbox', className: 'check', id: `scope-${s}`, value: s });
-            cb.checked = (app.scopes || []).includes(s);
-            const content = document.createElement('div');
-            content.className = 'form-field-content';
-            const lab = Object.assign(document.createElement('label'), { htmlFor: `scope-${s}`, textContent: s });
-            content.append(lab);
-            wrap.append(cb, content);
-            return wrap;
-        }));
+
+
+
+        function addRedirect(value = '') {
+            const wrap = $('#redirectInputs');
+            if (wrap.children.length >= 20) return;
+            const row = document.createElement('div'); row.className = 'redirect-row';
+            const field = document.createElement('div'); field.className = 'form-field';
+            const input = document.createElement('input'); input.type = 'url'; input.className = 'form-control mono'; input.value = value; input.placeholder = 'https://yourapp.com/callback'; input.setAttribute('aria-label', 'Redirect URL');
+            field.append(input); Forms.feedback(input, 'Use an HTTPS URL, or HTTP on localhost. No fragments or wildcards.');
+            const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'btn btn-outline btn-sm'; remove.textContent = 'Remove';
+            remove.addEventListener('click', () => { row.remove(); $('#redirectsForm').dispatchEvent(new Event('input', {bubbles:true})); $('#addRedirect').disabled = false; });
+            row.append(field, remove); wrap.append(row); $('#addRedirect').disabled = wrap.children.length >= 20;
+        }
+        $$('#redirectInputs .redirect-row').forEach(row => { Forms.feedback(row.querySelector('input'), 'Use an HTTPS URL, or HTTP on localhost. No fragments or wildcards.'); row.querySelector('button').addEventListener('click', () => { row.remove(); $('#redirectsForm').dispatchEvent(new Event('input', {bubbles:true})); $('#addRedirect').disabled = false; }); });
+        $('#addRedirect').addEventListener('click', () => { addRedirect(); $$('#redirectInputs input').at(-1)?.focus(); $('#redirectsForm').dispatchEvent(new Event('input', {bubbles:true})); });
+
+        function previewAppearance() {
+            const avatar = $('[data-preview-avatar]'); avatar.replaceChildren(); fillAvatar(avatar, app.name, $('#sLogo').value);
+            $('[data-preview-banner]').replaceChildren(); $('[data-preview-banner]').style.backgroundImage = ''; if ($('#sBanner').value) applyBanner($('[data-preview-banner]'), $('#sBanner').value);
+        }
+        ['sLogo','sBanner'].forEach(id => $('#' + id).addEventListener('change', () => { if (Forms.imageUrl($('#' + id))) previewAppearance(); }));
+
+
 
         $('#generalForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -356,14 +353,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             const rr = await send('PATCH', `/api/apps/${urlAppId}`, {
                 name: $('#sName').value.trim(),
                 description: $('#sDesc').value.trim(),
-                status: $('#sStatus').value
+                status: $('#sStatus').checked ? 'active' : 'disabled'
             });
+            if (rr.success) { app.name = $('#sName').value.trim(); $$('[data-app-name]').forEach(el => el.textContent = app.name); $$('[data-app-select] option').forEach(el => { if (el.value === app._id) el.textContent = app.name; }); }
             showToast(rr.message, rr.success ? 'success' : 'error');
         });
 
         $('#redirectsForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const redirectUrls = $('#sRedirects').value.split('\n').map((x) => x.trim()).filter(Boolean);
+            const inputs = $$('#redirectInputs input');
+            inputs.forEach(input => {
+                let ok = !input.value.trim();
+                try { const u = new URL(input.value.trim()); ok ||= !u.hash && !input.value.includes('*') && (u.protocol === 'https:' || (u.protocol === 'http:' && ['localhost','127.0.0.1'].includes(u.hostname))); } catch {}
+                input.setCustomValidity(ok ? '' : 'Invalid redirect URL.');
+            });
+            if (!Validate.group(e.target)) return;
+            const redirectUrls = [...new Set(inputs.map(input => input.value.trim()).filter(Boolean))];
             const rr = await send('PUT', `/api/apps/${urlAppId}/redirects`, { redirectUrls });
             showToast(rr.message, rr.success ? 'success' : 'error');
         });
@@ -377,10 +382,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         $('#appearanceForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const rr = await send('PATCH', `/api/apps/${urlAppId}/appearance`, {
+            Forms.imageUrl($('#sLogo')); Forms.imageUrl($('#sBanner'));
+            if (!Validate.group(e.target)) return;
+            const rr = await send('PATCH', `/api/apps/${urlAppId}`, { theme: { ...app.theme,
+                logoUrl: $('#sLogo').value.trim(), bannerUrl: $('#sBanner').value.trim(),
                 primaryColor: $('#sColor').value,
                 darkMode: $('#sDark').checked
-            });
+            } });
             showToast(rr.message, rr.success ? 'success' : 'error');
         });
 
@@ -408,69 +416,64 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (page === 'account') {
-        $$('[data-user-email]').forEach((e) => (e.textContent = user.email || ''));
-        $$('[data-user-verified]').forEach((e) => (e.textContent = user.emailVerified ? 'verified' : 'unverified'));
-        $('#pDisplayName').value = user.profile?.displayName || '';
-        $('#pBio').value = user.profile?.bio || '';
-        $('#pPhone').value = user.phone || '';
+
+
+
+
+
+
+        const phone = Forms.phone($('#pPhone'), $('#phoneCountry'));
+        const profileSummary = $('#profileForm .form-summary');
+        $$('#profileForm input, #profileForm textarea').forEach(input => { input.dataset.apiField = ({pDisplayName:'profile.displayName',pBio:'profile.bio',pPhone:'phone',pBirthDate:'birthDate',pAvatar:'profile.avatarUrl',pBanner:'profile.bannerUrl'})[input.id]; Forms.feedback(input, input.type === 'url' ? 'Use an HTTPS image URL.' : 'Check this value.'); });
+
         const birthPicker = makeDatepicker($('#pBirthDate'), { min: '1900-01-01', max: new Date().toISOString().slice(0, 10) });
         if (user.birthDate) birthPicker?.setSelectedDates([String(user.birthDate).slice(0, 10)]);
 
         $('#profileForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            phone.valid(); Forms.imageUrl($('#pAvatar')); Forms.imageUrl($('#pBanner'));
+            const dateValue = $('#pBirthDate').value.trim();
+            $('#pBirthDate').setCustomValidity(!dateValue || !isNaN(Date.parse(dateValue)) && new Date(dateValue) <= new Date() ? '' : 'Choose a valid past date.');
+            if (!Validate.group(e.target)) { Forms.invalid(e.target, profileSummary); return; }
+            Forms.summary(profileSummary, '');
             const body = {
                 profile: {
-                    displayName: $('#pDisplayName').value.trim() || undefined,
-                    bio: $('#pBio').value.trim() || undefined
+                    displayName: $('#pDisplayName').value.trim(),
+                    bio: $('#pBio').value.trim(),
+                    avatarUrl: $('#pAvatar').value.trim(), bannerUrl: $('#pBanner').value.trim()
                 },
-                phone: $('#pPhone').value.trim() || undefined,
+                phone: phone.number(),
                 birthDate: birthPicker?.getSelectedDates?.()[0] || undefined
             };
             const rr = await send('PATCH', '/api/me', body);
+            if (!rr.success) Forms.serverErrors(e.target, rr, profileSummary);
+            else { $$('[data-user-initials]').forEach(el => fillAvatar(el, body.profile.displayName || user.username, body.profile.avatarUrl)); $('#profileBanner').replaceChildren(); $('#profileBanner').style.backgroundImage = ''; if (body.profile.bannerUrl) applyBanner($('#profileBanner'), body.profile.bannerUrl); }
             showToast(rr.message, rr.success ? 'success' : 'error');
         });
 
         const sessionsList = $('#sessionsList');
-        const sessRes = await Api.get('/api/me/sessions');
+        const sessRes = {success:true, data:initial.sessions};
         const sessions = (sessRes.data || []).filter((s) => !s.appId);
-        sessionsList.replaceChildren(...(sessions.length ? sessions : []).map((s) => {
-            const li = document.createElement('li');
-            li.className = 'd-flex align-items-center justify-content-between gap-3';
-            const info = document.createElement('span');
-            info.className = 'form-text';
-            info.textContent = `${(s.userAgent || 'Unknown device').slice(0, 60)} · since ${fmtDate(s.createdAt)}`;
-            const btn = Object.assign(document.createElement('button'), { className: 'btn btn-text theme-danger btn-sm', type: 'button', textContent: 'Revoke' });
-            btn.addEventListener('click', async () => {
-                btn.disabled = true;
-                const rr = await send('DELETE', `/api/me/sessions/${s._id}`);
-                showToast(rr.message, rr.success ? 'success' : 'error');
-                if (rr.success) li.remove();
-            });
-            li.append(info, btn);
-            return li;
+        sessionsList.querySelectorAll('[data-revoke-session]').forEach(btn => btn.addEventListener('click', async () => {
+            btn.disabled = true;
+            const rr = await send('DELETE', `/api/me/sessions/${btn.dataset.revokeSession}`);
+            showToast(rr.message, rr.success ? 'success' : 'error');
+            if (rr.success) btn.closest('li').remove(); else btn.disabled = false;
         }));
-        if (!sessions.length) sessionsList.innerHTML = '<li class="text-secondary">No active sessions found.</li>';
+        if (!sessRes.success) sessionsList.textContent = sessRes.message || 'Could not load sessions. Reload to retry.';
+        else if (!sessions.length) sessionsList.innerHTML = '<li class="text-secondary">No active sessions found.</li>';
 
         const authzList = $('#authzList');
-        const authz = await Api.get('/api/me/authorizations');
+        const authz = {success:true, data:initial.authorizations};
         const grants = authz.data || [];
-        authzList.replaceChildren(...grants.map((g) => {
-            const li = document.createElement('li');
-            li.className = 'd-flex align-items-center justify-content-between gap-3';
-            const info = document.createElement('span');
-            info.className = 'form-text';
-            info.textContent = `${g.app?.name || 'Unknown app'} · ${(g.scopes || []).join(', ') || 'no scopes'}`;
-            const btn = Object.assign(document.createElement('button'), { className: 'btn btn-text theme-danger btn-sm', type: 'button', textContent: 'Revoke' });
-            btn.addEventListener('click', async () => {
-                btn.disabled = true;
-                const rr = await send('DELETE', `/api/me/authorizations/${g.appId}`);
-                showToast(rr.message, rr.success ? 'success' : 'error');
-                if (rr.success) li.remove();
-            });
-            li.append(info, btn);
-            return li;
+        authzList.querySelectorAll('[data-revoke-authorization]').forEach(btn => btn.addEventListener('click', async () => {
+            btn.disabled = true;
+            const rr = await send('DELETE', `/api/me/authorizations/${btn.dataset.revokeAuthorization}`);
+            showToast(rr.message, rr.success ? 'success' : 'error');
+            if (rr.success) btn.closest('li').remove(); else btn.disabled = false;
         }));
-        if (!grants.length) authzList.innerHTML = '<li class="text-secondary">You have not authorized any apps yet.</li>';
+        if (!authz.success) authzList.textContent = authz.message || 'Could not load authorizations. Reload to retry.';
+        else if (!grants.length) authzList.innerHTML = '<li class="text-secondary">You have not authorized any apps yet.</li>';
 
         $('#exportBtn').addEventListener('click', async () => {
             const rr = await Api.get('/api/me/export');
@@ -495,24 +498,128 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    async function send(method, url, body) {
-        const res = await fetch(url, {
-            method,
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
-            body: body ? JSON.stringify(body) : undefined
+    $$('[data-image-upload]').forEach(button => button.addEventListener('click', async () => {
+        const id = button.dataset.imageUpload;
+        const input = $('#' + id + 'File');
+        const file = input.files[0];
+        const status = $(`[data-image-status="${id}"]`);
+        if (!file || !['image/png','image/jpeg','image/webp'].includes(file.type) || file.size < 512 || file.size > 5 * 1024 * 1024) { status.textContent = 'Choose a PNG, JPEG or WebP between 512 bytes and 5 MB.'; return; }
+        if (input.closest('form').dataset.dirty && !confirm('This uploads and saves the image immediately. Your other unsaved fields will not be saved. Continue?')) return;
+        button.disabled = true; status.textContent = 'Uploading image…';
+        const params = new URLSearchParams({field:button.dataset.imageField});
+        if (page === 'appSettings') params.set('appId', urlAppId);
+        const result = await Api.upload(`/api/images/${page === 'appSettings' ? 'app' : 'account'}?${params}`, file);
+        button.disabled = false;
+        status.textContent = result.message || 'Upload failed.';
+        if (!result.success) return;
+        $('#' + id).value = result.data.url; input.value = '';
+        const form = input.closest('form');
+        const prior = JSON.parse(form.dataset.snapshot || '[]');
+        prior.forEach(entry => { if (entry[0] === id) entry[1] = result.data.url; if (entry[0] === id + 'File') entry[1] = ''; });
+        form.dataset.snapshot = JSON.stringify(prior);
+        $('#' + id).dispatchEvent(new Event('change', {bubbles:true}));
+        if (page === 'account') {
+            user.profile ||= {}; user.profile[button.dataset.imageField] = result.data.url;
+            if (id === 'pAvatar') $$('[data-user-initials]').forEach(el => fillAvatar(el,user.profile.displayName || user.username,result.data.url));
+            else { $('#profileBanner').replaceChildren(); $('#profileBanner').style.backgroundImage = `url("${result.data.url}")`; }
+        } else initial.selectedApp.theme[button.dataset.imageField] = result.data.url;
+    }));
+
+    function initIntegration(app, main) {
+        const section = $('#integration');
+        const redirect = $('#playRedirect');
+        let state = '', verifier = '';
+        const base64 = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+        $('#playgroundForm').addEventListener('submit', async event => {
+            event.preventDefault();
+            const scopes = $$('#playScopes input:checked').map(cb => cb.value);
+            const error = $('#playError'); error.hidden = true;
+            if (!redirect.value || !scopes.length || app.status !== 'active') { error.textContent = 'An active app, registered redirect URL and at least one scope are required.'; error.hidden = false; return; }
+            if (!crypto.subtle) { error.textContent = 'PKCE needs HTTPS or localhost.'; error.hidden = false; return; }
+            verifier = base64(crypto.getRandomValues(new Uint8Array(32))); state = base64(crypto.getRandomValues(new Uint8Array(24)));
+            const challenge = base64(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier))));
+            const url = new URL('/oauth/authorize',location.origin); url.search = new URLSearchParams({client_id:app.clientId,redirect_uri:redirect.value,response_type:'code',scope:scopes.join(' '),state,code_challenge:challenge,code_challenge_method:'S256'});
+            $('#playUrl').value = url.toString(); $('#playOpen').href = url.toString(); $('#playVerifier').textContent = verifier; $('#playResult').hidden = false;
         });
-        const data = await res.json().catch(() => ({}));
-        return { ...data, success: res.ok && data.success !== false };
+        $('#playInspect').addEventListener('click', () => {
+            const status = $('#playCallbackStatus');
+            try {
+                const callback = new URL($('#playCallback').value); const expected = new URL(redirect.value);
+                if (callback.origin !== expected.origin || callback.pathname !== expected.pathname || [...expected.searchParams].some(([key,value]) => callback.searchParams.get(key) !== value)) throw Error('Callback does not match the selected redirect URL.');
+                if (callback.searchParams.get('state') !== state) throw Error('State mismatch. Do not use this callback.');
+                if (callback.searchParams.get('error')) { status.textContent = `Authorization returned: ${callback.searchParams.get('error')}`; return; }
+                if (!callback.searchParams.get('code')) throw Error('No authorization code found.');
+                status.textContent = 'Callback and state match. Exchange the code on your server using the verifier above and your client secret. Do not share them.';
+            } catch (error) { status.textContent = error.message || 'Paste a valid callback URL.'; }
+        });
+        $('#userinfoForm').addEventListener('submit', async event => {
+            event.preventDefault(); const button = event.target.querySelector('button'); button.disabled = true;
+            const token = $('#playAccessToken').value.trim(); $('#playAccessToken').value = '';
+            try { const response = await fetch('/oauth/userinfo',{headers:{Authorization:`Bearer ${token}`},credentials:'omit',cache:'no-store'}); const data = await response.json(); $('#playUserinfo').textContent = JSON.stringify({status:response.status,body:data},null,2); }
+            catch { $('#playUserinfo').textContent = 'Could not load userinfo. Check your connection.'; }
+            finally { button.disabled = false; }
+        });
+                const details = [...main.children].filter(el => el !== section);
+        function showIntegration() {
+            const hash = location.hash;
+            const tool = ['#docs','#playground'].includes(hash);
+            details.forEach(el => el.hidden = tool);
+            $('#docs',section).hidden = hash !== '#docs';
+            $('#playground',section).hidden = hash !== '#playground';
+            if (!tool) {
+                let intro = $('#integrationIntro');
+                if (!intro) { intro = document.createElement('p'); intro.id = 'integrationIntro'; intro.className = 'text-secondary mb-0'; intro.textContent = 'Get app-specific integration instructions or test an OAuth request.'; $('.card-body',section).append(intro); }
+                intro.hidden = false;
+            } else { $('#integrationIntro')?.setAttribute('hidden',''); }
+            $$('.nav-link[data-app-link]').forEach(link => { const active = link.pathname === location.pathname && link.hash === hash; link.classList.toggle('active',active); if (active) link.setAttribute('aria-current','page'); else link.removeAttribute('aria-current'); });
+            $$('.integration-tabs a',section).forEach(link => { link.classList.toggle('theme-brand',link.hash === hash); link.classList.toggle('btn-solid',link.hash === hash); });
+        }
+        window.addEventListener('hashchange',showIntegration); showIntegration();
     }
 
-    let cachedToken;
-    async function authHeader() {
-        if (!cachedToken) {
-            const r = await fetch('/api/auth/refresh', { method: 'POST', credentials: 'same-origin' });
-            const d = await r.json().catch(() => ({}));
-            cachedToken = d.accessToken || null;
+    async function send(method, url, body) {
+        const form = document.activeElement?.closest('form');
+        if (form) form.querySelectorAll('[type=submit]').forEach(btn => btn.disabled = true);
+        const result = await Api[method.toLowerCase()](url, body);
+        if (form) {
+            form.querySelectorAll('[type=submit]').forEach(btn => btn.disabled = false);
+            if (result.success) { form.dataset.snapshot = snapshot(form); form.dataset.dirty = ''; const note = form.querySelector('.form-save-state'); if (note) note.textContent = 'Saved'; }
         }
-        return cachedToken ? { Authorization: `Bearer ${cachedToken}` } : {};
+        return result;
+    }
+
+    function snapshot(form) { return JSON.stringify([...form.querySelectorAll('input,textarea,select')].map(el => [el.id, el.type === 'checkbox' ? el.checked : el.value])); }
+    $$('form').forEach(form => {
+        form.dataset.snapshot = snapshot(form);
+        if (!['appSettings','account'].includes(page)) return;
+        const note = document.createElement('span'); note.className = 'form-save-state'; note.setAttribute('aria-live','polite'); form.append(note);
+        const update = () => { form.dataset.dirty = snapshot(form) !== form.dataset.snapshot ? 'true' : ''; note.textContent = form.dataset.dirty ? 'Unsaved changes' : ''; };
+        form.addEventListener('input', update); form.addEventListener('change', update);
+    });
+    window.addEventListener('beforeunload', event => { if ($$('form').some(form => form.dataset.dirty)) { event.preventDefault(); event.returnValue = ''; } });
+
+    function deviceLabel(agent = '') {
+        const os = /iPad/.test(agent) ? 'iPadOS' : /iPhone/.test(agent) ? 'iOS' : /Android/.test(agent) ? 'Android' : /Windows/.test(agent) ? 'Windows' : /Macintosh|Mac OS/.test(agent) ? 'macOS' : /Linux/.test(agent) ? 'Linux' : 'Unknown device';
+        const browser = /Edg/.test(agent) ? 'Edge' : /OPR/.test(agent) ? 'Opera' : /Firefox|FxiOS/.test(agent) ? 'Firefox' : /Chrome|CriOS/.test(agent) ? 'Chrome' : /Safari/.test(agent) ? 'Safari' : 'Unknown browser';
+        return `${browser} on ${os}`;
+    }
+
+    if (page === 'dashboard') {
+        async function activity() {
+            const target = $('#activityChart'); target.textContent = 'Loading activity…';
+            const result = await Api.get(`/api/analytics?days=${$('#analyticsDays').value}`);
+            if (!result.success) { target.textContent = result.message || 'Could not load activity. Change the period to retry.'; return; }
+            if (!Array.isArray(result.data?.series) || !Number.isFinite(result.data?.total)) { target.textContent = 'Activity response was incomplete. Change the period to retry.'; return; }
+            const series = result.data.series; target.replaceChildren();
+            const total = document.createElement('p'); total.className = 'h4'; total.textContent = `${result.data.total} sign-ins in retained records`; target.append(total);
+            if (!result.data.total) { const empty = document.createElement('p'); empty.className = 'form-text'; empty.textContent = 'No initial OAuth token issues found for this period in retained records.'; target.append(empty); }
+            const bars = document.createElement('div'); bars.className = 'activity-bars'; bars.setAttribute('aria-hidden','true');
+            const max = Math.max(1,...series.map(day => day.count));
+            series.forEach((day,index) => { const col = document.createElement('div'); col.className = 'activity-day'; col.title = `${day.date}: ${day.count}`; const bar = document.createElement('div'); bar.className = 'activity-bar'; bar.style.height = `${Math.max(1,day.count/max*85)}%`; const label = document.createElement('span'); label.textContent = series.length <= 7 || index % 5 === 0 ? day.date.slice(5) : ''; col.append(bar,label); bars.append(col); });
+            target.append(bars);
+            const details = document.createElement('details'); details.className = 'activity-table'; const summary = document.createElement('summary'); summary.textContent = 'View daily counts'; details.append(summary);
+            const table = document.createElement('table'); table.className = 'table-simple'; table.innerHTML = '<caption class="visually-hidden">Daily sign-in counts in UTC</caption><thead><tr><th>Date (UTC)</th><th>Count</th></tr></thead>'; const tbody = document.createElement('tbody'); series.forEach(day => { const tr = document.createElement('tr'); [day.date,day.count].forEach(value => { const td = document.createElement('td'); td.textContent = value; tr.append(td); }); tbody.append(tr); }); table.append(tbody); details.append(table); target.append(details);
+        }
+        $('#analyticsDays').addEventListener('change', activity);
     }
 });

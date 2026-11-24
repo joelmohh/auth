@@ -34,14 +34,18 @@
             <button type="submit" class="btn theme-brand btn-solid w-100 mt-4">Continue</button>
           </form>
 
+          <button type="button" id="loginPasskey" class="btn btn-outline w-100 mt-3"><i class="fa-solid fa-fingerprint" aria-hidden="true"></i> Sign in with passkey</button>
+          <p class="form-text mt-2">Enter your email first. Use your device unlock or a hardware security key.</p>
           <p class="form-text text-center mt-4 mb-0">Don't have an account? <a href="/signup">Sign up</a></p>
         </div>
 
-        <%- include('partials/otp', { label: 'Verify' }) %>
+        <div id="mfaPanel" hidden><h2 class="h5">Authenticator verification</h2><p class="form-text">Enter the current code from your authenticator app, or one unused recovery code.</p><form id="mfaForm"><label class="form-label" for="mfaCode">Authenticator or recovery code</label><input id="mfaCode" class="form-control" autocomplete="one-time-code" maxlength="64" required><button class="btn theme-brand btn-solid w-100 mt-3" type="submit">Verify and sign in</button></form><a class="form-text" href="/login">Start sign-in again</a></div>
+        <%- include('partials/otp' , { label: 'Verify' }) %>
       </div>
     </div>
   </main>
   <%- include('partials/scripts') %>
+  <script src="/js/webauthn.js"></script>
   <script src="/js/auth.js"></script>
 </body>
 </html>

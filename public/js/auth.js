@@ -59,12 +59,18 @@ document.addEventListener('DOMContentLoaded', () => {
         busy(btn, true);
         const r = await Api.post('/api/auth/verify-otp', { email, otp: code, purpose: 'verify_email' }, false);
         busy(btn, false);
+        if (r.mfaRequired) { location.href='/login?mfa=1'; return; }
         if (!r.success) return showToast(r.message, 'error');
         location.href = postAuthRedirect('/dashboard');
     }
 
     if (page === 'login') {
         const form = $('#loginForm');
+        let mfaToken='';
+        const showMfa=token=>{mfaToken=token||'';$('#loginView').classList.add('d-none');$('[data-otp-panel]').classList.add('d-none');$('#mfaPanel').hidden=false;$('#mfaCode').focus();};
+        if(new URLSearchParams(location.search).has('mfa'))showMfa();
+        $('#mfaForm').addEventListener('submit',async event=>{event.preventDefault();const button=event.target.querySelector('button');busy(button,true);const r=await Api.post('/api/security/login/totp',{token:mfaToken,code:$('#mfaCode').value.trim()},false);$('#mfaCode').value='';busy(button,false);if(r.success)location.href=postAuthRedirect(r.redirectURL||'/dashboard');else showToast(r.message,'error');});
+        $('#loginPasskey').addEventListener('click',async event=>{const button=event.currentTarget;busy(button,true);try{if(!window.PublicKeyCredential)throw Error('Passkeys are not supported in this browser.');const r=await Api.post('/api/security/passkeys/authenticate/options',{email:form.elements.email.value.trim()},false);if(!r.success)throw Error(r.message);const response=await SimpleWebAuthnBrowser.startAuthentication({optionsJSON:r.data.options});const result=await Api.post('/api/security/passkeys/authenticate/verify',{token:r.data.token,response},false);if(result.mfaRequired){showMfa(result.data.token);return;}if(!result.success)throw Error(result.message);location.href=postAuthRedirect(result.redirectURL||'/dashboard');}catch(error){showToast(error.name==='NotAllowedError'?'Passkey canceled or timed out.':error.message,'error');}finally{busy(button,false);}});
         const googleLink = $('[data-google-login]');
         const back = new URLSearchParams(location.search).get('redirect');
         if (googleLink && back && back.startsWith('/') && !back.startsWith('//')) {
@@ -82,6 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const r = await Api.post('/api/auth/login', { email, password: form.elements.password.value }, false);
             busy(btn, false);
 
+            if (r.mfaRequired) { showMfa(r.data.token); return; }
             if (r.success) return (location.href = postAuthRedirect(r.redirectURL || '/dashboard'));
             if (r.verified === false) {
                 $('#loginView').classList.add('d-none');
@@ -98,6 +105,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const dots = [...document.querySelectorAll('.steps-item')];
         const otp = initOtp($('[data-otp-panel]'));
         let i = 0;
+        const summary = $('#signupSummary');
+        const phone = Forms.phone(form.elements.phone);
+
 
         const birthPicker = window.bootstrap?.Datepicker
             ? new bootstrap.Datepicker(form.elements.birthDate, { dateMin: '1900-01-01', dateMax: new Date().toISOString().slice(0, 10), datepickerTheme: 'dark' })
@@ -105,6 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const go = (n) => {
             i = n;
+            Forms.summary(summary, '');
             steps.forEach((el, k) => el.classList.toggle('d-none', k !== n));
             dots.forEach((d, k) => d.classList.toggle('active', k <= n));
         };
@@ -115,7 +126,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (!Validate.group(steps[i])) return;
+            if (i === 1) phone.valid();
+            if (!Validate.group(steps[i])) { Forms.invalid(steps[i], summary); return; }
+            Forms.summary(summary, '');
             if (i < steps.length - 1) return go(i + 1);
 
             const v = (n) => form.elements[n].value.trim() || undefined;
@@ -127,7 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 termsAccepted: form.elements.terms.checked,
                 displayName: v('displayName'),
                 bio: v('bio'),
-                phone: v('phone'),
+                phone: phone.number(),
                 birthDate: birthPicker?.getSelectedDates?.()[0] || undefined,
                 address: Object.keys(address).length ? address : undefined
             };
@@ -138,8 +151,12 @@ document.addEventListener('DOMContentLoaded', () => {
             busy(btn, false);
 
             if (!r.success) {
-                showToast(r.message, 'error');
-                if (r.status === 400) go(0);
+                if (r.status === 400 || r.status === 409) go(0);
+                Forms.serverErrors(form, r, summary);
+                if (!Array.isArray(r.data) && /email|username/i.test(r.message || '')) {
+                    const name = /email/i.test(r.message) ? 'email' : 'username';
+                    const input = form.elements[name]; input.classList.add('is-invalid'); Forms.feedback(input, r.message).hidden = false;
+                }
                 return;
             }
             form.classList.add('d-none');

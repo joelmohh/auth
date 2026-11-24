@@ -8,8 +8,8 @@
     </div>
     <div class="position-relative">
       <button class="btn btn-text d-flex align-items-center gap-2" type="button" data-bs-toggle="menu" aria-label="Account menu">
-        <span class="avatar" data-user-initials></span>
-        <span class="d-none md:d-inline" data-user-name></span>
+        <span class="avatar" data-user-initials><%- include('avatar', { name: dashboard.user.profile?.displayName || dashboard.user.username, image: dashboard.user.profile?.avatarUrl }) %></span>
+        <span class="d-none md:d-inline" data-user-name><%= dashboard.user.username %></span>
         <i class="fa-solid fa-chevron-down" style="font-size:.7rem" aria-hidden="true"></i>
       </button>
       <div class="menu" role="menu">

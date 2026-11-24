@@ -1,0 +1,23 @@
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+        <div>
+          <h2 class="h5 mb-1">Your applications</h2>
+          <p class="text-secondary mb-0">Open an application to manage its users and configuration</p>
+        </div>
+        <button class="btn theme-brand btn-solid" type="button" id="newAppBtn">
+          <i class="fa-solid fa-plus" aria-hidden="true"></i> New app
+        </button>
+      </div>
+
+      <div class="d-flex flex-wrap gap-3 mb-4">
+        <input type="search" class="form-control flex-1" id="search" placeholder="Search apps" aria-label="Search apps">
+        <select class="form-control" id="statusFilter" aria-label="Filter by status" style="width:auto">
+          <option value="">All statuses</option><option value="active">Active</option><option value="disabled">Disabled</option>
+        </select>
+        <select class="form-control" id="sortBy" aria-label="Sort" style="width:auto">
+          <option value="az">Name A–Z</option><option value="za">Name Z–A</option>
+        </select>
+      </div>
+
+      <div class="grid row-gap-4" id="appGrid"><% [...dashboard.apps].sort((a,b) => a.name.localeCompare(b.name)).slice(0,6).forEach(app => { %><%- include('app-card', { app }) %><% }) %></div>
+      <p class="text-secondary text-center <%= dashboard.apps.length ? 'd-none' : '' %> py-5" id="empty">No apps found.</p>
+      <div class="d-flex justify-content-center gap-2 mt-5" id="pager"></div>

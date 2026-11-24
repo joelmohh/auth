@@ -11,7 +11,7 @@ const Api = (() => {
         return refreshing;
     }
 
-    async function call(method, url, body, auth = true, retry = true) {
+    async function call(method, url, body, auth = true, retry = true, raw = false) {
         if (auth && !token) await refresh();
         if (auth && !token) {
             const back = location.pathname + location.search;
@@ -24,8 +24,8 @@ const Api = (() => {
             res = await fetch(url, {
                 method,
                 credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/json', ...(auth ? { Authorization: `Bearer ${token}` } : {}) },
-                body: body ? JSON.stringify(body) : undefined
+                headers: { 'Content-Type': raw ? body.type : 'application/json', ...(auth ? { Authorization: `Bearer ${token}` } : {}) },
+                body: body ? (raw ? body : JSON.stringify(body)) : undefined
             });
         } catch {
             return { success: false, status: 0, message: 'Network error. Check your connection.' };
@@ -33,7 +33,7 @@ const Api = (() => {
 
         if (res.status === 401 && auth && retry) {
             token = null;
-            return call(method, url, body, auth, false);
+            return call(method, url, body, auth, false, raw);
         }
 
         const data = await res.json().catch(() => ({}));
@@ -42,7 +42,11 @@ const Api = (() => {
     }
 
     return {
+        upload: (url, file) => call('POST', url, file, true, true, true),
         get: (url, auth = true) => call('GET', url, null, auth),
-        post: (url, body, auth = true) => call('POST', url, body, auth)
+        post: (url, body, auth = true) => call('POST', url, body, auth),
+        patch: (url, body) => call('PATCH', url, body),
+        put: (url, body) => call('PUT', url, body),
+        delete: (url) => call('DELETE', url)
     };
 })();

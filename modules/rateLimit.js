@@ -1,13 +1,13 @@
 const expressRT = require('express-rate-limit');
 
 const generalLimiter = expressRT({
-    windowMs: 15 * 60 * 1000, // 15 minutes
+    windowMs: 15 * 60 * 1000, 
     max: 100,
     message: 'Too many requests from this IP, please try again after 15 minutes'
 });
 
 const apiLimiter = expressRT({
-    windowMs: 15 * 60 * 1000, // 15 minutes
+    windowMs: 15 * 60 * 1000, 
     max: 300,
     message: 'Too many requests from this IP, please try again after 15 minutes'
 });

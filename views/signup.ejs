@@ -5,7 +5,7 @@
   <main class="container min-vh-100 d-flex align-items-center justify-content-center py-4">
     <div class="card auth-card shadow w-100">
       <div class="card-body p-4 p-md-5">
-        <div class="mb-4"><%- include('partials/brand') %></div>
+        <div class="mb-4"><%- include('partials/brand') %></div><div id="signupSummary" class="form-summary" role="alert" tabindex="-1" hidden></div>
         <h1 class="h4 mb-1">Create your account</h1>
         <p class="text-secondary mb-4">Welcome! Fill in the details to get started.</p>
 
@@ -18,23 +18,23 @@
         <form id="signupForm" novalidate>
           <div data-step>
             <div class="form-field">
-              <label for="email" class="form-label">Email address</label>
+              <label for="email" class="form-label">Email address <span aria-hidden="true">*</span></label>
               <input type="email" class="form-control" id="email" name="email" required autocomplete="email" placeholder="you@example.com">
               <div class="invalid-feedback">Enter a valid email address.</div>
             </div>
             <div class="form-field mt-4">
-              <label for="username" class="form-label">Username</label>
+              <label for="username" class="form-label">Username <span aria-hidden="true">*</span></label>
               <input type="text" class="form-control" id="username" name="username" required minlength="3" maxlength="32" pattern="[A-Za-z0-9_.\-]+" autocomplete="username" placeholder="johndoe">
               <div class="invalid-feedback">3-32 characters: letters, numbers, dot, dash or underscore.</div>
             </div>
             <div class="form-field mt-4">
-              <label for="password" class="form-label">Password</label>
-              <input type="password" class="form-control" id="password" name="password" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters">
+              <label for="password" class="form-label">Password <span aria-hidden="true">*</span></label>
+              <input type="password" class="form-control" id="password" name="password" required minlength="8" maxlength="128" autocomplete="new-password" placeholder="At least 8 characters">
               <div class="strength-bar" data-bs-strength></div>
               <div class="invalid-feedback">Use at least 8 characters.</div>
             </div>
             <div class="form-field mt-4">
-              <label for="passwordC" class="form-label">Confirm password</label>
+              <label for="passwordC" class="form-label">Confirm password <span aria-hidden="true">*</span></label>
               <input type="password" class="form-control" id="passwordC" name="passwordC" required data-match="#password" autocomplete="new-password" placeholder="Re-enter your password">
               <div class="invalid-feedback">Passwords do not match.</div>
             </div>

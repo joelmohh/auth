@@ -26,7 +26,7 @@ const UserSchema = new mongoose.Schema({
         select: false
     },
 
-    // Optional data
+    
     profile: {
         displayName: {
             type: String,
@@ -61,7 +61,7 @@ const UserSchema = new mongoose.Schema({
     },
     birthDate: { type: Date },
 
-    // Account general info
+    
     termsAcceptedAt: { type: Date },
     termsVersion: { type: String },
     status: { 

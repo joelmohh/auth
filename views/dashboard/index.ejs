@@ -7,36 +7,32 @@
     <nav class="sidebar d-none lg:d-block" aria-label="Navigation">
       <%- include('partials/sidebar') %>
     </nav>
-    <main class="p-4 p-md-5">
+    <main class="dashboard-main">
       <h1 class="h4 mb-4">Overview</h1>
       <div class="grid row-gap-4 mb-4">
         <div class="g-col-12 md:g-col-4"><div class="card"><div class="card-body">
-          <p class="text-secondary mb-1">Apps</p><p class="h3 mb-0" data-stat="apps">–</p>
+          <p class="text-secondary mb-1">Apps</p><p class="h3 mb-0" data-stat="apps"><%= dashboard.apps.length %></p>
         </div></div></div>
         <div class="g-col-12 md:g-col-4"><div class="card"><div class="card-body">
-          <p class="text-secondary mb-1">Active apps</p><p class="h3 mb-0" data-stat="active">–</p>
+          <p class="text-secondary mb-1">Active apps</p><p class="h3 mb-0" data-stat="active"><%= dashboard.apps.filter(app => app.status === 'active').length %></p>
         </div></div></div>
         <div class="g-col-12 md:g-col-4"><div class="card"><div class="card-body">
-          <p class="text-secondary mb-1">Providers enabled</p><p class="h3 mb-0" data-stat="providers">–</p>
+          <p class="text-secondary mb-1">Providers enabled</p><p class="h3 mb-0" data-stat="providers"><%= dashboard.apps.reduce((sum, app) => sum + (app.providers || []).filter(provider => provider.enabled).length, 0) %></p>
         </div></div></div>
       </div>
-      <div class="card mb-4">
+      <div class="card mb-4" id="onboarding" <%= dashboard.apps.length ? 'hidden' : '' %>>
         <div class="card-body">
           <h2 class="h6 mb-1">Get started</h2>
           <p class="text-secondary">Create an app to get a client ID and secret, then point it to <span class="mono">/oauth/authorize</span> to start signing users in.</p>
           <a class="btn theme-brand btn-solid btn-sm" href="/dashboard/apps">Manage apps</a>
         </div>
       </div>
-      <div class="card">
-        <div class="card-body">
-          <h2 class="h6 mb-1">Activity</h2>
-          <p class="text-secondary mb-0">Sign-ins over time will show up here once the analytics endpoint exists.</p>
-          <div class="d-flex align-items-center justify-content-center text-secondary" style="min-height:10rem">No data yet</div>
-        </div>
-      </div>
+      <section class="card activity-card mb-4" aria-labelledby="activityTitle"><div class="card-body"><div class="section-heading"><div><h2 class="h6" id="activityTitle">Sign-in activity</h2><p class="form-text">Initial OAuth token issues from retained records. UTC days. Expired records are not included.</p></div><select id="analyticsDays" class="form-control" aria-label="Activity period"><option value="7">Last 7 days</option><option value="30">Last 30 days</option></select></div><div id="activityChart" aria-live="polite"><%- include('partials/activity', { activity: dashboard.analytics }) %></div></div></section>
+
     </main>
   </div>
 
+  <%- include('partials/data') %>
   <%- include('../partials/scripts') %>
   <script src="/js/dashboard.js"></script>
 </body>

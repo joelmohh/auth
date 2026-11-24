@@ -7,38 +7,38 @@
     <nav class="sidebar d-none lg:d-block" aria-label="Navigation">
       <%- include('partials/sidebar') %>
     </nav>
-    <main class="p-4 p-md-5" style="max-width:52rem">
+    <main class="dashboard-main">
       <h1 class="h4 mb-4">Account</h1>
 
-      <div class="card mb-4"><div class="card-body">
+      <div class="card mb-4 overflow-hidden"><div class="app-banner profile-banner" id="profileBanner"><% if (h.imageUrl(dashboard.user.profile?.bannerUrl)) { %><img class="banner-image" src="<%= h.imageUrl(dashboard.user.profile.bannerUrl) %>" alt=""><% } %></div><div class="card-body">
         <div class="d-flex align-items-center gap-3 mb-4">
-          <span class="avatar" style="width:3rem;height:3rem;font-size:1.1rem" data-user-initials></span>
+          <span class="avatar" style="width:3rem;height:3rem;font-size:1.1rem" data-user-initials><%- include('partials/avatar', {name:dashboard.user.profile?.displayName || dashboard.user.username, image:dashboard.user.profile?.avatarUrl}) %></span>
           <div>
-            <p class="fw-semibold mb-0" data-user-name></p>
-            <p class="form-text mb-0"><span data-user-email></span> · <span class="badge badge-subtle" data-user-verified></span></p>
+            <p class="fw-semibold mb-0" data-user-name><%= dashboard.user.username %></p>
+            <p class="form-text mb-0"><span data-user-email><%= dashboard.user.email %></span> · <span class="badge badge-subtle" data-user-verified><%= dashboard.user.emailVerified ? 'verified' : 'unverified' %></span></p>
           </div>
         </div>
         <h2 class="h6 mb-3">Profile</h2>
-        <form id="profileForm" novalidate>
+        <form id="profileForm" novalidate><div class="form-summary" role="alert" tabindex="-1" hidden></div>
           <div class="grid row-gap-3">
             <div class="g-col-12 md:g-col-6 form-field">
               <label for="pDisplayName" class="form-label">Display name</label>
-              <input type="text" class="form-control" id="pDisplayName" maxlength="64">
+              <input type="text" class="form-control" id="pDisplayName" maxlength="64" value="<%= dashboard.user.profile?.displayName || '' %>">
             </div>
             <div class="g-col-12 md:g-col-6 form-field">
               <label for="pPhone" class="form-label">Phone</label>
-              <input type="tel" class="form-control" id="pPhone" maxlength="20" pattern="[0-9+()\-\s]*">
+              <input type="tel" class="form-control" id="pPhone" maxlength="32" autocomplete="tel" placeholder="+1 403 555 0123" value="<%= dashboard.user.phone || '' %>"><p class="form-text" id="phoneCountry" aria-live="polite">Include the country calling code.</p>
             </div>
             <div class="g-col-12 md:g-col-6 form-field">
               <label for="pBirthDate" class="form-label">Birth date</label>
-              <input type="text" class="form-control" id="pBirthDate" autocomplete="off" placeholder="Choose date…">
+              <input type="text" class="form-control" id="pBirthDate" autocomplete="off" placeholder="Choose date…" value="<%= dashboard.user.birthDate?.slice(0,10) || '' %>">
             </div>
             <div class="g-col-12 form-field">
               <label for="pBio" class="form-label">Bio</label>
-              <textarea class="form-control" id="pBio" rows="2" maxlength="280"></textarea>
+              <textarea class="form-control" id="pBio" rows="2" maxlength="280"><%= dashboard.user.profile?.bio || '' %></textarea>
             </div>
           </div>
-          <button type="submit" class="btn theme-brand btn-solid btn-sm mt-4">Save profile</button>
+          <div class="form-field mt-3"><label class="form-label" for="pAvatarFile">Avatar image file</label><input id="pAvatarFile" class="form-control" type="file" accept="image/png,image/jpeg,image/webp"><button type="button" class="btn btn-outline btn-sm mt-2" data-image-upload="pAvatar" data-image-field="avatarUrl"><i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i> Upload and save image</button><p class="form-text" data-image-status="pAvatar" role="status">PNG, JPEG or WebP, 512 bytes to 5 MB. Upload saves immediately to Square Cloud Blob. Images are viewable by anyone with the image link.</p><label class="form-label" for="pAvatar">Profile picture URL</label><input type="url" class="form-control" id="pAvatar" maxlength="512" placeholder="https://…" value="<%= dashboard.user.profile?.avatarUrl || '' %>"></div><div class="form-field mt-3"><label class="form-label" for="pBannerFile">Account banner image file</label><input id="pBannerFile" class="form-control" type="file" accept="image/png,image/jpeg,image/webp"><button type="button" class="btn btn-outline btn-sm mt-2" data-image-upload="pBanner" data-image-field="bannerUrl"><i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i> Upload and save image</button><p class="form-text" data-image-status="pBanner" role="status">PNG, JPEG or WebP, 512 bytes to 5 MB. Upload saves immediately to Square Cloud Blob. Images are viewable by anyone with the image link.</p><label class="form-label" for="pBanner">Banner URL</label><input type="url" class="form-control" id="pBanner" maxlength="512" placeholder="https://…" value="<%= dashboard.user.profile?.bannerUrl || '' %>"><p class="form-text">Optional fallback: use an HTTPS image URL, then save the form.</p></div><button type="submit" class="btn theme-brand btn-solid btn-sm mt-4">Save profile</button>
         </form>
       </div></div>
 
@@ -46,7 +46,7 @@
         <h2 class="h6 mb-1">Active sessions</h2>
         <p class="form-text mb-3">Devices currently signed in to your account.</p>
         <ul class="list-unstyled d-grid gap-2 mb-0" id="sessionsList">
-          <li class="text-secondary">Loading…</li>
+          <% if (!dashboard.sessions.length) { %><li class="text-secondary">No active sessions found.</li><% } dashboard.sessions.forEach(session => { %><li class="d-flex align-items-center justify-content-between gap-3"><span class="form-text"><%= h.deviceLabel(session.userAgent) %> · since <%= h.fmtDate(session.createdAt) %></span><button type="button" class="btn btn-text theme-danger btn-sm" data-revoke-session="<%= session._id %>">Revoke</button></li><% }) %>
         </ul>
       </div></div>
 
@@ -54,10 +54,11 @@
         <h2 class="h6 mb-1">Authorized apps</h2>
         <p class="form-text mb-3">Apps that can access your information.</p>
         <ul class="list-unstyled d-grid gap-2 mb-0" id="authzList">
-          <li class="text-secondary">Loading…</li>
+          <% if (!dashboard.authorizations.length) { %><li class="text-secondary">You have not authorized any apps yet.</li><% } dashboard.authorizations.forEach(grant => { %><li class="d-flex align-items-center justify-content-between gap-3"><span class="form-text"><%= grant.app?.name || 'Unknown app' %> · <%= grant.scopes?.join(', ') || 'no scopes' %></span><button type="button" class="btn btn-text theme-danger btn-sm" data-revoke-authorization="<%= grant.appId %>">Revoke</button></li><% }) %>
         </ul>
       </div></div>
 
+      <%- include('partials/security') %>
       <div class="card mb-4"><div class="card-body">
         <h2 class="h6 mb-3">Your data</h2>
         <div class="d-flex flex-wrap gap-4 align-items-center justify-content-between mb-3">
@@ -92,7 +93,10 @@
     </div>
   </dialog>
 
+  <%- include('partials/data') %>
   <%- include('../partials/scripts') %>
   <script src="/js/dashboard.js"></script>
+  <script src="/js/webauthn.js"></script>
+  <script src="/js/security.js"></script>
 </body>
 </html>

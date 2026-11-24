@@ -1,0 +1,35 @@
+  <template id="appTpl"><div class="app-grid-item"><a class="card app-entry" data-select><div class="app-banner"></div><div class="app-avatar"></div><div class="card-body"><div class="entry-title"><h3 class="h6" data-name></h3><span class="badge badge-subtle" data-status></span></div><p class="form-text" data-description></p><span class="entry-action">Open application <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></span></div></a></div></template>
+
+  <dialog class="card" id="newAppDialog" aria-labelledby="newAppTitle">
+    <div class="card-body p-4">
+      <form id="newAppForm" novalidate>
+        <h2 class="h5 mb-3" id="newAppTitle">New app</h2>
+        <div class="form-field">
+          <label for="appName" class="form-label">Name</label>
+          <input type="text" class="form-control" id="appName" name="name" required minlength="2" maxlength="64">
+          <div class="invalid-feedback">Enter a name (2–64 characters).</div>
+        </div>
+        <div class="form-field mt-4">
+          <label for="appDesc" class="form-label">Description <span class="text-secondary">(optional)</span></label>
+          <textarea class="form-control" id="appDesc" name="description" rows="2" maxlength="280"></textarea>
+        </div>
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button type="button" class="btn btn-text" data-close>Cancel</button>
+          <button type="submit" class="btn theme-brand btn-solid">Create</button>
+        </div>
+      </form>
+      <div id="secretView" class="d-none">
+        <h2 class="h5 mb-2">App created</h2>
+        <p class="text-secondary">Copy the client secret now. It will not be shown again.</p>
+        <label class="form-label" for="clientId">Client ID</label>
+        <input class="form-control mono mb-3" id="clientId" readonly>
+        <label class="form-label" for="clientSecret">Client secret</label>
+        <input class="form-control mono mb-4" id="clientSecret" readonly>
+        <div class="d-flex justify-content-end gap-2">
+          <button type="button" class="btn btn-outline" id="copySecret">Copy secret</button>
+          <button type="button" class="btn theme-brand btn-solid" data-close>Done</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
